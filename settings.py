@@ -35,6 +35,8 @@ class CopilotSettings(BaseSettings):
     # STT
     PROSA_API_KEY: str = "ajksdh12398ajlds1209"
     GROQ_API_KEY: str = "adjk128"
+    AZURE_SPEECH_KEY: str = "asdkjwkwkwk213"
+    AZURE_SPEECH_REGION: str = "pemalang23"
     
     # LLM
     GCP_PROJECT_ID: str = "test"
