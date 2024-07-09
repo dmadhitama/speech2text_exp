@@ -43,7 +43,7 @@ else:
     aiplatform.init(project=PROJECT_ID, location=REGION, credentials=credentials)
     vertexai.init(project=PROJECT_ID, location=REGION, credentials=credentials)
 
-st.title('🦜🔗 Chatbot App')
+st.title('🦜🔗 Speech/Text to SOAP App')
 
 def generate_response_from_gpt(
         input_text, 
@@ -51,9 +51,13 @@ def generate_response_from_gpt(
         messages
     ):
     system_message = """
-    You are a helpful assistant.
-    Answer the question below using Indonesian language.
-    Do not make any assumptions. If you don't know the answer, just answer that you don't know.
+    You are an expert physician. Generate a separate SOAP note for each problem from the following transcript. The SOAP note should be concise and utilize bullet point format. Include ICD-10 and CPT codes in parentheses next to the diagnosis and services. Generate a detailed Subjective section, with all diagnoses separated. Include plans for each assessment. Include all relevant information discussed in the transcript.
+
+    The transcripts will be in Indonesian language and you will also generate the text in Indonesian.
+
+    After the SOAP note is generated, there might be multiple follow-up questions. You should answer them only if they are related to the SOAP generation process. You can fix the answer or revise only part of the SOAP. Do not make things up in this section. If you don't know what you are doing, just say you do not know.
+
+    Generate the SOAP answer as markdown formatted.
     """
 
     prompt = ChatPromptTemplate.from_messages(
@@ -110,9 +114,11 @@ def gemini():
 
 
 system_message = """
-You are a helpful assistant.
-Answer the question below using Indonesian language.
-Do not make any assumptions. If you don't know the answer, just answer that you don't know.
+You are an expert physician. Generate a separate SOAP note for each problem from the following transcript. The SOAP note should be concise and utilize bullet point format. Include ICD-10 and CPT codes in parentheses next to the diagnosis and services. Generate a detailed Subjective section, with all diagnoses separated. Include plans for each assessment. Include all relevant information discussed in the transcript.
+
+The transcripts will be in Indonesian language and you will also generate the text in Indonesian.
+
+After the SOAP note is generated, there might be multiple follow-up questions. You should answer them only if they are related to the SOAP generation process. You can fix the answer or revise only part of the SOAP. Do not make things up in this section. If you don't know what you are doing, just say you do not know.
 """
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "service_account/dwh-demo-357404-3324cccb0fbf.json"
 msgs = StreamlitChatMessageHistory(key="special_app_key")
