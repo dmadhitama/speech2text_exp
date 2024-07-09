@@ -2,15 +2,46 @@ import streamlit as st
 from settings import CopilotSettings
 
 from langchain_openai import AzureChatOpenAI
+from langchain_google_vertexai import VertexAI, ChatVertexAI, create_structured_runnable
+
 from settings import CopilotSettings
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_community.chat_message_histories import (
     StreamlitChatMessageHistory,
 )
 from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain.callbacks.base import BaseCallbackHandler
+
+from langchain.schema import ChatMessage
+import os
+from streamlit_chat import message
+
 
 config = CopilotSettings()
+
+# Initialize Vertex AI
+from pathlib import Path
+import vertexai
+from google.cloud import aiplatform
+
+PROJECT_ID = 'dwh-siloam'
+REGION = 'asia-southeast1'
+print(f"Project ID: {PROJECT_ID}\nRegion: {REGION}")
+
+print(f"Checking Credentials...")
+if not any((Path.cwd()/"service_account").glob('*.json')):
+    print("Service account folder is empty. Fallback using default gcloud account")
+    aiplatform.init(project=PROJECT_ID, location=REGION)
+    vertexai.init(project=PROJECT_ID, location=REGION)
+else:
+    print('Using service account credentials from service_account folder')
+    from google.oauth2 import service_account
+    sa_file = list((Path.cwd()/"service_account").glob('*.json'))[0]
+    print(f"Using service account file: {sa_file}")
+    credentials = service_account.Credentials.from_service_account_file(sa_file)
+    aiplatform.init(project=PROJECT_ID, location=REGION, credentials=credentials)
+    vertexai.init(project=PROJECT_ID, location=REGION, credentials=credentials)
 
 st.title('🦜🔗 Chatbot App')
 
@@ -58,27 +89,37 @@ def generate_response_from_gemini(input_text, config):
     # TBD
     pass
 
-messages = [
-    AIMessage(
-        content="Halo, apa kabar?",
-    ),
-    HumanMessage(
-        content="Baik."
-    ),
-    AIMessage(
-        content="Ada yang bisa saya bantu?",
-    ),
-]
-history = StreamlitChatMessageHistory(key="chat_messages")
-history.add_ai_message("Halo! Apa kabar?")
-history.add_user_message("Baik.")
-history.add_ai_message("Ada yang bisa saya bantu?")
+def GPT():
+    return AzureChatOpenAI(
+            deployment_name=config.OPENAI_DEPLOYMENT_NAME,
+            api_key=config.OPENAI_API_KEY,
+            openai_api_version=config.OPENAI_API_VERSION,
+            azure_endpoint=config.OPENAI_API_ENDPOINT,
+            temperature=0,
+            max_tokens=8192,
+            streaming=False,
+            # callback_manager=[stream_handler],
+        )
+
+def gemini():
+    return VertexAI(
+        model_name=config.GCP_AGENT_MODEL_NAME, 
+        temperature=0, 
+        max_output_tokens=8192
+    )
+
 
 system_message = """
 You are a helpful assistant.
 Answer the question below using Indonesian language.
 Do not make any assumptions. If you don't know the answer, just answer that you don't know.
 """
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "service_account/dwh-demo-357404-3324cccb0fbf.json"
+msgs = StreamlitChatMessageHistory(key="special_app_key")
+
+if len(msgs.messages) == 0:
+    msgs.add_ai_message("Ada yang bisa saya bantu?")
+
 prompt = ChatPromptTemplate.from_messages(
     [
         ("system", system_message),
@@ -86,28 +127,17 @@ prompt = ChatPromptTemplate.from_messages(
         ("human", "{question}"),
     ]
 )
-llm = AzureChatOpenAI(
-    deployment_name=config.OPENAI_DEPLOYMENT_NAME,
-    api_key=config.OPENAI_API_KEY,
-    openai_api_version=config.OPENAI_API_VERSION,
-    azure_endpoint=config.OPENAI_API_ENDPOINT,
-    temperature=0,
-    max_tokens=8192,
-    streaming=False,
-)
-chain = (
-    prompt
-    | llm
-)
+chain = prompt | gemini()
+
 
 chain_with_history = RunnableWithMessageHistory(
     chain,
-    lambda session_id: history,  # Always return the instance created earlier
+    lambda session_id: msgs,  # Always return the instance created earlier
     input_messages_key="question",
     history_messages_key="history",
 )
 
-for msg in history.messages:
+for msg in msgs.messages:
     st.chat_message(msg.type).write(msg.content)
 
 if prompt := st.chat_input():
@@ -116,28 +146,4 @@ if prompt := st.chat_input():
     # As usual, new messages are added to StreamlitChatMessageHistory when the Chain is called.
     config = {"configurable": {"session_id": "any"}}
     response = chain_with_history.invoke({"question": prompt}, config)
-    st.chat_message("ai").write(response.content)
-
-# with st.form('my_form'):
-#     text = st.text_area('Masukkan pertanyaan:')
-#     submitted = st.form_submit_button('Submit')
-#     response = generate_response_from_gpt(
-#         text, 
-#         config,
-#         messages
-#     )
-
-#     print(text)
-#     print(response)
-#     answer = response.content
-#     st.info(answer)
-
-#     query = HumanMessage(
-#         content=text
-#     )
-#     answer = AIMessage(
-#         content=answer
-#     )
-
-#     messages.append(answer)
-#     messages.append(query)
+    st.chat_message("ai").write(response)
