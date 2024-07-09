@@ -130,6 +130,7 @@ env.bak/
 venv.bak/
 service_account/
 .streamlit/
+data/
 
 # Spyder project settings
 .spyderproject

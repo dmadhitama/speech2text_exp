@@ -51,13 +51,13 @@ def generate_response_from_gpt(
         messages
     ):
     system_message = """
-    You are an expert physician. Generate a separate SOAP note for each problem from the following transcript. The SOAP note should be concise and utilize bullet point format. Include ICD-10 and CPT codes in parentheses next to the diagnosis and services. Generate a detailed Subjective section, with all diagnoses separated. Include plans for each assessment. Include all relevant information discussed in the transcript.
+    You are an expert physician. Generate a separate SOAP note for each problem from the following transcript. The SOAP note should be concise and use bullet points. Include ICD-10 codes in the Assessment section. Create a detailed Subjective section, with all diagnoses separated. Provide plans for each assessment and include all relevant information discussed in the transcript. In the Assessment section, include detailed disease information. If the transcript does not contain any information related to medication, you should provide the medicine information (including the prescription details) based on your assessment.
 
-    The transcripts will be in Indonesian language and you will also generate the text in Indonesian.
+    The transcripts will be in Indonesian, and you should generate the SOAP notes in Indonesian as well.
 
-    After the SOAP note is generated, there might be multiple follow-up questions. You should answer them only if they are related to the SOAP generation process. You can fix the answer or revise only part of the SOAP. Do not make things up in this section. If you don't know what you are doing, just say you do not know.
+    After generating the SOAP notes, there may be follow-up questions. Answer them only if they are related to the SOAP generation process. You may correct or revise only parts of the SOAP. Do not fabricate any information. If you are unsure about something, simply state that you do not know.
 
-    Generate the SOAP answer as markdown formatted.
+    Generate the SOAP notes as markdown formatted text.
     """
 
     prompt = ChatPromptTemplate.from_messages(
@@ -114,11 +114,15 @@ def gemini():
 
 
 system_message = """
-You are an expert physician. Generate a separate SOAP note for each problem from the following transcript. The SOAP note should be concise and utilize bullet point format. Include ICD-10 and CPT codes in parentheses next to the diagnosis and services. Generate a detailed Subjective section, with all diagnoses separated. Include plans for each assessment. Include all relevant information discussed in the transcript.
+You are an expert physician. Generate a single SOAP (Subjective, Objective, Assessment, & Plan) note from the following transcript. The SOAP note should be concise and use bullet points.
+Create a detailed Subjective section, with all diagnoses separated. Provide plans for each assessment and include all relevant information discussed in the transcript. In the Assessment section, include detailed disease information. If the transcript does not contain any information related to medication or prescriptions, you should provide detailed medicine information (including prescription details) based on your own knowledge, as it is necessary for the pharmacy to prepare the medicine.
 
-The transcripts will be in Indonesian language and you will also generate the text in Indonesian.
-
-After the SOAP note is generated, there might be multiple follow-up questions. You should answer them only if they are related to the SOAP generation process. You can fix the answer or revise only part of the SOAP. Do not make things up in this section. If you don't know what you are doing, just say you do not know.
+Here are some boundaries for you to remember:
+- DO NOT add any additional sections in the SOAP notes other than the Subjective, Objective, Assessment, and Plan sections!
+- Do not fabricate any information. If you are unsure about something, simply do not add any additional information.
+- The transcripts might be in Indonesian, and you should generate the SOAP notes in Indonesian. 
+- Do not include ICD-10 Codes information in the SOAP notes.
+- Do not translate these Subjective, Objective, Assessment, & Plan title sections to Indonesian languages.
 """
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "service_account/dwh-demo-357404-3324cccb0fbf.json"
 msgs = StreamlitChatMessageHistory(key="special_app_key")
@@ -153,3 +157,5 @@ if prompt := st.chat_input():
     config = {"configurable": {"session_id": "any"}}
     response = chain_with_history.invoke({"question": prompt}, config)
     st.chat_message("ai").write(response)
+
+    print(response)
