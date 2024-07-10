@@ -43,51 +43,10 @@ else:
     aiplatform.init(project=PROJECT_ID, location=REGION, credentials=credentials)
     vertexai.init(project=PROJECT_ID, location=REGION, credentials=credentials)
 
+
+# Page title
+st.set_page_config(page_title='🦜🔗 Speech/Text to SOAP App')
 st.title('🦜🔗 Speech/Text to SOAP App')
-
-def generate_response_from_gpt(
-        input_text, 
-        config,
-        messages
-    ):
-    system_message = """
-    You are an expert physician. Generate a separate SOAP note for each problem from the following transcript. The SOAP note should be concise and use bullet points. Include ICD-10 codes in the Assessment section. Create a detailed Subjective section, with all diagnoses separated. Provide plans for each assessment and include all relevant information discussed in the transcript. In the Assessment section, include detailed disease information. If the transcript does not contain any information related to medication, you should provide the medicine information (including the prescription details) based on your assessment.
-
-    The transcripts will be in Indonesian, and you should generate the SOAP notes in Indonesian as well.
-
-    After generating the SOAP notes, there may be follow-up questions. Answer them only if they are related to the SOAP generation process. You may correct or revise only parts of the SOAP. Do not fabricate any information. If you are unsure about something, simply state that you do not know.
-
-    Generate the SOAP notes as markdown formatted text.
-    """
-
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            (
-                "system",
-                system_message
-            ),
-            MessagesPlaceholder(variable_name="message"),
-        ]
-    )
-    llm = AzureChatOpenAI(
-        deployment_name=config.OPENAI_DEPLOYMENT_NAME,
-        api_key=config.OPENAI_API_KEY,
-        openai_api_version=config.OPENAI_API_VERSION,
-        azure_endpoint=config.OPENAI_API_ENDPOINT,
-        temperature=0,
-        max_tokens=8192,
-        streaming=False,
-    )
-    chain = (
-        prompt
-        | llm
-    )
-    query = HumanMessage(
-        content=input_text
-    )
-    messages.append(query)
-    response = chain.invoke({"message": messages})
-    return response
 
 def generate_response_from_gemini(input_text, config):
     # TBD
@@ -115,7 +74,7 @@ def gemini():
 
 system_message = """
 You are an expert physician. Generate a single SOAP (Subjective, Objective, Assessment, & Plan) note from the following transcript. The SOAP note should be concise and use bullet points.
-Create a detailed Subjective section, with all diagnoses separated. Provide plans for each assessment and include all relevant information discussed in the transcript. In the Assessment section, include detailed disease information. If the transcript does not contain any information related to medication or prescriptions, you should provide detailed medicine information (including prescription details) based on your own knowledge, as it is necessary for the pharmacy to prepare the medicine.
+Create a detailed Subjective section, with all diagnoses separated. Provide plans for each assessment and include all relevant information discussed in the transcript. In the Assessment section, include detailed disease information. If the transcript does not contain any information related to medication or prescriptions, you should provide detailed medicine information (including prescription details) based on your own knowledge, as it is necessary for the pharmacy to prepare the medicine. But do not provide this information as a new section.
 
 Here are some boundaries for you to remember:
 - DO NOT add any additional sections in the SOAP notes other than the Subjective, Objective, Assessment, and Plan sections!
@@ -124,38 +83,31 @@ Here are some boundaries for you to remember:
 - Do not include ICD-10 Codes information in the SOAP notes.
 - Do not translate these Subjective, Objective, Assessment, & Plan title sections to Indonesian languages.
 """
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "service_account/dwh-demo-357404-3324cccb0fbf.json"
-msgs = StreamlitChatMessageHistory(key="special_app_key")
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "service_account/dwh-siloam-99402e61edd2.json"
 
-if len(msgs.messages) == 0:
-    msgs.add_ai_message("Ada yang bisa saya bantu?")
+# Text input
+# txt_input = st.text_area('Enter your text', '', height=200)
 
-prompt = ChatPromptTemplate.from_messages(
-    [
-        ("system", system_message),
-        MessagesPlaceholder(variable_name="history"),
-        ("human", "{question}"),
-    ]
-)
-chain = prompt | gemini()
+# Form to accept user's text input for summarization
+# result = []
+with st.form('summarize_form'):#, clear_on_submit=True):
+    txt_input = st.text_area('Enter your text', height=200)
+    submitted = st.form_submit_button('Submit')
 
+    if txt_input != '':
+        with st.spinner('Processing...'):
+            prompt = ChatPromptTemplate.from_messages(
+                [
+                    ("system", system_message),
+                    ("human", "{question}"),
+                ]
+            )
+            chain = prompt | gemini()
+            response = chain.invoke({"question": txt_input})
+            # result.append(response)
 
-chain_with_history = RunnableWithMessageHistory(
-    chain,
-    lambda session_id: msgs,  # Always return the instance created earlier
-    input_messages_key="question",
-    history_messages_key="history",
-)
-
-for msg in msgs.messages:
-    st.chat_message(msg.type).write(msg.content)
-
-if prompt := st.chat_input():
-    st.chat_message("human").write(prompt)
-
-    # As usual, new messages are added to StreamlitChatMessageHistory when the Chain is called.
-    config = {"configurable": {"session_id": "any"}}
-    response = chain_with_history.invoke({"question": prompt}, config)
-    st.chat_message("ai").write(response)
-
-    print(response)
+        print(txt_input)
+        print("================================================")
+        print(response)
+        # if len(result):
+        st.info(response)
