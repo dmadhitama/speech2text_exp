@@ -52,7 +52,7 @@ def generate_response_from_gemini(input_text, config):
     # TBD
     pass
 
-def GPT():
+def gpt():
     return AzureChatOpenAI(
             deployment_name=config.OPENAI_DEPLOYMENT_NAME,
             api_key=config.OPENAI_API_KEY,
@@ -86,12 +86,16 @@ Here are some boundaries for you to remember:
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "service_account/dwh-siloam-99402e61edd2.json"
 
 # Text input
-# txt_input = st.text_area('Enter your text', '', height=200)
+txt_input = st.text_area('Enter your text', '', height=200)
+
+# Dropdown list of models
+llm_str = st.selectbox(
+    "Large Language Models",
+    ("GPT-4", "Gemini-1.5")
+)
 
 # Form to accept user's text input for summarization
-# result = []
-with st.form('summarize_form'):#, clear_on_submit=True):
-    txt_input = st.text_area('Enter your text', height=200)
+with st.form('summarize_form', clear_on_submit=True):
     submitted = st.form_submit_button('Submit')
 
     if txt_input != '':
@@ -102,12 +106,20 @@ with st.form('summarize_form'):#, clear_on_submit=True):
                     ("human", "{question}"),
                 ]
             )
-            chain = prompt | gemini()
+            if llm_str == "GPT-4":
+                llm = gpt()
+            elif llm_str == "Gemini-1.5":
+                llm = gemini()
+            chain = prompt | llm
             response = chain.invoke({"question": txt_input})
             # result.append(response)
 
+        # logging
         print(txt_input)
         print("================================================")
         print(response)
-        # if len(result):
-        st.info(response)
+        
+        if not isinstance(response, str):
+            st.info(response.content)
+        else:
+            st.info(response)
