@@ -75,10 +75,10 @@ uploaded_file = st.file_uploader("Choose an audio file", type=["wav"])
 if new_audio_data is not None:  
     st.session_state['audio_data'] = new_audio_data  
     st.audio(st.session_state['audio_data'], format='audio/wav')  
-    if stt_str == "Azure":  
-        st.session_state['transcript'] = recognize_using_azure(content=new_audio_data)  
-    elif stt_str == "Vertex AI":  
-        st.session_state['transcript'] = recognize_using_vertexai(content=new_audio_data)
+    # if stt_str == "Azure":  
+    #     st.session_state['transcript'] = recognize_using_azure(content=new_audio_data)  
+    # elif stt_str == "Vertex AI":  
+    #     st.session_state['transcript'] = recognize_using_vertexai(content=new_audio_data)
 
 elif uploaded_file is not None:
     data, sample_rate = sf.read(uploaded_file)
@@ -89,27 +89,36 @@ elif uploaded_file is not None:
         num_channels = data.shape[1]  # Stereo or more
     bytes_data = uploaded_file.getvalue()
     st.session_state['file'] = bytes_data
-    if stt_str == "Azure":  
-        st.session_state['transcript'] = recognize_using_azure(content=bytes_data)  
-    elif stt_str == "Vertex AI":  
-        st.session_state['transcript'] = recognize_using_vertexai(
-            content=bytes_data,
-            sample_rate=sample_rate,
-            num_channels=num_channels
-        )
+    # if stt_str == "Azure":  
+    #     st.session_state['transcript'] = recognize_using_azure(content=bytes_data)  
+    # elif stt_str == "Vertex AI":  
+    #     st.session_state['transcript'] = recognize_using_vertexai(
+    #         content=bytes_data,
+    #         sample_rate=sample_rate,
+    #         num_channels=num_channels
+    #     )
 
-  
-# Display the audio player only if there is audio data  
-# if st.session_state['audio_data'] is not None:  
-    # st.audio(st.session_state['audio_data'], format='audio/wav')  
+# Button for transcription
+if st.button('Transcribe'):  
+    if st.session_state['file'] is not None or st.session_state['audio_data'] is not None:  
+        with st.spinner('Transcribing...'):  
+            if stt_str == "Azure":  
+                st.session_state['transcript'] = recognize_using_azure(content=bytes_data)  
+            elif stt_str == "Vertex AI":  
+                st.session_state['transcript'] = recognize_using_vertexai(
+                    content=bytes_data,
+                    sample_rate=sample_rate,
+                    num_channels=num_channels
+                )
   
 # Text area for transcript  
 txt_input = st.text_area('Transcript', st.session_state['transcript'], height=200)  
   
 # Form to accept user's text input for summarization  
 with st.form('summarize_form', clear_on_submit=True):  
-    submitted = st.form_submit_button('Submit')  
-    if txt_input != '':  
+    # submitted = st.form_submit_button('Submit')  
+    # if txt_input != '':  
+    if st.form_submit_button('Generate SOAP note'):
         with st.spinner('Processing...'):  
             prompt = ChatPromptTemplate.from_messages(  
                 [  
@@ -125,12 +134,12 @@ with st.form('summarize_form', clear_on_submit=True):
             chain = prompt | llm  
             response = chain.invoke({"question": txt_input})  
   
-        # logging  
-        print(txt_input)  
-        print("================================================")  
-        print(response)  
-  
         if not isinstance(response, str):  
             st.info(response.content)  
         else:  
             st.info(response)  
+  
+        # logging  
+        print(txt_input)  
+        print("================================================")  
+        print(response)  
