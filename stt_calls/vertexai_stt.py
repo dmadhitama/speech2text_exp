@@ -3,7 +3,9 @@ from google.cloud import speech
 def recognize_using_vertexai(
     # speech_file: str,
     # model: str,
-    content
+    content,
+    sample_rate=16000,
+    num_channels=1
 ) -> speech.RecognizeResponse:
     """Transcribe the given audio file synchronously with
     the selected model."""
@@ -16,9 +18,9 @@ def recognize_using_vertexai(
 
     config = speech.RecognitionConfig(
         encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-        sample_rate_hertz=44100,
+        sample_rate_hertz=sample_rate,
         language_code="id-ID",
-        audio_channel_count=2,
+        audio_channel_count=num_channels,
         # model=model,
     )
 

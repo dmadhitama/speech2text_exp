@@ -4,15 +4,18 @@ from langchain_core.prompts import ChatPromptTemplate
 import os  
 from streamlit_chat import message  
 from st_audiorec import st_audiorec  
-from llms.azure_llm import gpt  
-from llms.vertexai_llm import gemini  
-from prompts import sys_prompt  
-from stt_calls.azure_stt import recognize_using_azure  
-from stt_calls.vertexai_stt import recognize_using_vertexai  
+import soundfile as sf
+
+from llms.azure_llm import gpt
+from llms.vertexai_llm import gemini
+from prompts import sys_prompt
+from stt_calls.azure_stt import recognize_using_azure
+from stt_calls.vertexai_stt import recognize_using_vertexai
+
 from pathlib import Path  
 import vertexai  
 from google.cloud import aiplatform  
-  
+
 # Initialize Vertex AI  
 PROJECT_ID = 'dwh-siloam'  
 REGION = 'asia-southeast1'  
@@ -56,14 +59,17 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "service_account/dwh-siloam-99402
   
 # Initialize session state for audio data and transcript  
 if 'audio_data' not in st.session_state:  
-    st.session_state['audio_data'] = None  
+    st.session_state['audio_data'] = None
+if 'file' not in st.session_state:
+    st.session_state['file'] = None
 if 'transcript' not in st.session_state:  
-    st.session_state['transcript'] = ''  
+    st.session_state['transcript'] = ''
   
 # Audio recording  
 new_audio_data = st_audiorec()  
 
 # Audio file uploading
+uploaded_file = st.file_uploader("Choose an audio file", type=["wav"])
   
 # Update session state with new audio data  
 if new_audio_data is not None:  
@@ -72,7 +78,26 @@ if new_audio_data is not None:
     if stt_str == "Azure":  
         st.session_state['transcript'] = recognize_using_azure(content=new_audio_data)  
     elif stt_str == "Vertex AI":  
-        st.session_state['transcript'] = recognize_using_vertexai(content=new_audio_data)  
+        st.session_state['transcript'] = recognize_using_vertexai(content=new_audio_data)
+
+elif uploaded_file is not None:
+    data, sample_rate = sf.read(uploaded_file)
+    # Determine the number of channels  
+    if data.ndim == 1:  
+        num_channels = 1  # Mono  
+    else:  
+        num_channels = data.shape[1]  # Stereo or more
+    bytes_data = uploaded_file.getvalue()
+    st.session_state['file'] = bytes_data
+    if stt_str == "Azure":  
+        st.session_state['transcript'] = recognize_using_azure(content=bytes_data)  
+    elif stt_str == "Vertex AI":  
+        st.session_state['transcript'] = recognize_using_vertexai(
+            content=bytes_data,
+            sample_rate=sample_rate,
+            num_channels=num_channels
+        )
+
   
 # Display the audio player only if there is audio data  
 # if st.session_state['audio_data'] is not None:  
