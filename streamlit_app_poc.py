@@ -54,7 +54,7 @@ system_message = sys_prompt.system_message
 # Dropdown list of STT models  
 stt_str = st.selectbox(
     "Speech to Text Models",
-    ("Azure", "Vertex AI")
+    ("Azure (Under Construction)", "Vertex AI")
 )
 
 # Dropdown list of LLMs
@@ -73,34 +73,43 @@ if 'transcript' not in st.session_state:
   
 # Audio recording  
 new_audio_data = st_audiorec()  
-
 # Audio file uploading
 uploaded_file = st.file_uploader("Choose an audio file", type=["wav"])
   
 # Update session state with new audio data  
 if new_audio_data is not None:  
-    st.session_state['audio_data'] = new_audio_data  
-    st.audio(st.session_state['audio_data'], format='audio/wav')
-    # Convert the audio data bytes to an AudioSegment  
-    bytes_data = new_audio_data
-    audio_bytes_data = BytesIO(bytes_data)
+    st.session_state['audio_data'] = new_audio_data
+    # Convert the audio data bytes to an AudioSegment
+    audio_bytes_data = BytesIO(st.session_state['audio_data'])
     audio_segment = AudioSegment.from_wav(audio_bytes_data)
     # Determine the number of channels and sample rate
     num_channels = audio_segment.channels
     sample_rate = audio_segment.frame_rate
 
 if uploaded_file is not None:
+    st.audio(uploaded_file, format='audio/wav')
     data, sample_rate = sf.read(uploaded_file)
     # Determine the number of channels  
     if data.ndim == 1:  
         num_channels = 1  # Mono  
     else:  
         num_channels = data.shape[1]  # Stereo or more
-    bytes_data = uploaded_file.getvalue()
+    st.session_state['file'] = uploaded_file.getvalue()
+
+# Dropdown list of what data will be transcribed
+data_str = st.selectbox(
+    "What data will be transcribed?",
+    ("Recording", "File")
+)
+
+if data_str == "Recording":
+    bytes_data = st.session_state['audio_data']
+elif data_str == "File":
+    bytes_data = st.session_state['file']
 
 # Button for transcription
-if st.button('Transcribe'):  
-    if st.session_state['file'] is not None or st.session_state['audio_data'] is not None:  
+if st.button('Transcribe'):
+    if st.session_state['file'] is not None or st.session_state['audio_data']:# is not None or bytes_data is None:  
         with st.spinner('Transcribing...'):
             if stt_str == "Azure":  
                 st.session_state['transcript'] = recognize_using_azure(content=bytes_data)  
@@ -112,11 +121,11 @@ if st.button('Transcribe'):
                 )
   
 # Text area for transcript  
-txt_input = st.text_area('Transcript', st.session_state['transcript'], height=200)  
+txt_input = st.text_area('Transcription result', st.session_state['transcript'], height=200)  
   
 # Form to accept user's text input for summarization  
 with st.form('summarize_form', clear_on_submit=True):  
-    if st.form_submit_button('Generate SOAP note'):
+    if st.form_submit_button('Generate SOAP Note'):
         with st.spinner('Processing...'):  
             prompt = ChatPromptTemplate.from_messages(  
                 [  
@@ -136,7 +145,7 @@ with st.form('summarize_form', clear_on_submit=True):
             st.info(response.content)  
         else:  
             st.info(response)  
-  
+
         # logging  
         print(txt_input)  
         print("================================================")  

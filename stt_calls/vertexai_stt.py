@@ -11,9 +11,6 @@ def recognize_using_vertexai(
     the selected model."""
     client = speech.SpeechClient()
 
-    # with open(speech_file, "rb") as audio_file:
-    #     content = audio_file.read()
-
     audio = speech.RecognitionAudio(content=content)
 
     config = speech.RecognitionConfig(
@@ -26,10 +23,12 @@ def recognize_using_vertexai(
 
     response = client.recognize(config=config, audio=audio)
 
+    full_results = []
     for i, result in enumerate(response.results):
         alternative = result.alternatives[0]
         print("-" * 20)
         print(f"First alternative of result {i}")
         print(f"Transcript: {alternative.transcript}")
+        full_results.append(alternative.transcript)
 
-    return alternative.transcript
+    return ". ".join(full_results)
