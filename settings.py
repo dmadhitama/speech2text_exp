@@ -37,6 +37,7 @@ class CopilotSettings(BaseSettings):
     GROQ_API_KEY: str = "adjk128"
     AZURE_SPEECH_KEY: str = "asdkjwkwkwk213"
     AZURE_SPEECH_REGION: str = "pemalang23"
+    AZURE_SPEECH_ENDPOINT: str = "https://www.google.com"
     
     # LLM
     GCP_PROJECT_ID: str = "test"
