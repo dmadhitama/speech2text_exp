@@ -13,6 +13,7 @@ import string
 from llms.azure_llm import gpt
 from llms.vertexai_llm import gemini
 from prompts import sys_prompt
+from stt_calls.groq_stt import recognize_using_groq
 from stt_calls.azure_stt import recognize_using_azure
 from stt_calls.vertexai_stt import recognize_using_vertexai, recognize_using_vertexai_via_uri
 from utils.bytes2gcsuri import upload_wav_to_gcs
@@ -20,7 +21,13 @@ from utils.bytes2gcsuri import upload_wav_to_gcs
 from pathlib import Path  
 import vertexai  
 from google.cloud import aiplatform  
+from groq import Groq
 
+config = CopilotSettings()
+
+client = Groq(
+        api_key=config.GROQ_API_KEY,
+    )
 
 # Initialize Vertex AI
 if 'credentials' not in st.session_state:
@@ -45,11 +52,11 @@ if 'credentials' not in st.session_state:
         aiplatform.init(project=PROJECT_ID, location=REGION, credentials=credentials)
         vertexai.init(project=PROJECT_ID, location=REGION, credentials=credentials)
 
-config = CopilotSettings()
-
 # Page title
-st.set_page_config(page_title='🦜🔗 Speech/Text to SOAP App')
-st.title('🦜🔗 Speech/Text to SOAP App')
+st.set_page_config(page_title='🏥 Speech/Text to SOAP App')
+st.title('🏥 Speech/Text to SOAP App')
+# Input patient name
+patient_name = st.text_input("Patient name", "")
 
 # SOAP prompt system loading
 system_message = sys_prompt.system_message
@@ -59,7 +66,7 @@ system_message = sys_prompt.system_message
 #     "Speech to Text Models",
 #     ("Azure", "Vertex AI")
 # )
-stt_str = "Vertex AI"
+stt_str = "Groq"
 
 # Dropdown list of LLMs
 # llm_str = st.selectbox(
@@ -141,6 +148,11 @@ if st.button('Transcribe'):
                     sample_rate=sample_rate,
                     num_channels=num_channels
                 )
+            elif stt_str == "Groq":
+                st.session_state['transcript'] = recognize_using_groq(
+                    client,
+                    content=bytes_data
+                )
 
     elif store_str == "Cloud":
         with st.spinner('Transcribing...'):
@@ -165,11 +177,16 @@ if st.button('Transcribe'):
                     num_channels=num_channels
                 )
   
-# Text area for transcript  
+    if patient_name != '':
+        patient_str = "Nama pasien: " + patient_name + "\n"
+        st.session_state['transcript'] = patient_str + st.session_state['transcript']
+        patient_name = ''
+
+# Text area for transcript
 txt_input = st.text_area('Transcription result', st.session_state['transcript'], height=200)  
   
 # Form to accept user's text input for summarization  
-with st.form('summarize_form', clear_on_submit=True):  
+with st.form('summarize_form', clear_on_submit=True):
     if st.form_submit_button('Generate SOAP Note'):
         with st.spinner('Processing...'):  
             prompt = ChatPromptTemplate.from_messages(  
