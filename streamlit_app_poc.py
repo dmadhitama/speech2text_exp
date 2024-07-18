@@ -9,6 +9,7 @@ from pydub import AudioSegment
 from io import BytesIO
 import random
 import string
+import time
 
 from llms.azure_llm import gpt
 from llms.vertexai_llm import gemini
@@ -17,6 +18,7 @@ from stt_calls.groq_stt import recognize_using_groq
 from stt_calls.azure_stt import recognize_using_azure
 from stt_calls.vertexai_stt import recognize_using_vertexai, recognize_using_vertexai_via_uri
 from utils.bytes2gcsuri import upload_wav_to_gcs
+from utils.convert_wav_audio import convert_audio_from_file, convert_audio_from_bytes
 
 from pathlib import Path  
 import vertexai  
@@ -62,11 +64,11 @@ patient_name = st.text_input("Patient name", "")
 system_message = sys_prompt.system_message
 
 # Dropdown list of STT models  
-# stt_str = st.selectbox(
-#     "Speech to Text Models",
-#     ("Azure", "Vertex AI")
-# )
-stt_str = "Groq"
+stt_str = st.selectbox(
+    "Speech to Text Models",
+    ("Azure", "Vertex AI", "Groq")
+)
+# stt_str = "Vertex AI"
 
 # Dropdown list of LLMs
 # llm_str = st.selectbox(
@@ -99,6 +101,14 @@ uploaded_file = st.file_uploader("Choose an audio file", type=["wav"])
 # Update session state with new audio data  
 if new_audio_data is not None:  
     st.session_state['audio_data'] = new_audio_data
+
+    # convert the audio data bytes to 16000 Hz sample rate nad mono
+    st.session_state['audio_data'] = convert_audio_from_bytes(
+        st.session_state['audio_data'],
+        target_sample_rate=16000,
+        target_channels=1,
+    )
+
     # Convert the audio data bytes to an AudioSegment
     audio_bytes_data = BytesIO(st.session_state['audio_data'])
     audio_segment = AudioSegment.from_wav(audio_bytes_data)
@@ -106,15 +116,36 @@ if new_audio_data is not None:
     st.session_state['rec_channels'] = audio_segment.channels
     st.session_state['rec_sample_rate'] = audio_segment.frame_rate
 
+    # Raised warning if this condition met
+    if st.session_state['rec_channels'] != 1:
+        print("Warning: audio is not mono! May be affecting the processing.")
+    if st.session_state['rec_sample_rate'] != 16000:
+        print("Warning: audio sample rate is not 16000 Hz! May be affecting the processing.")
+
 if uploaded_file is not None:
     st.audio(uploaded_file, format='audio/wav')
+
+    # convert the audio data bytes to 16000 Hz sample rate and mono
+    start = time.time()
+    uploaded_file = convert_audio_from_file(
+        uploaded_file,
+        target_sample_rate=16000,
+        target_channels=1,
+    )
+    print(f"Audio converted to mono & 16000 Hz sample rate for about: {round(time.time() - start, 2)} seconds")
+    st.session_state['file'] = uploaded_file.getvalue()
+
     data, st.session_state['file_sample_rate'] = sf.read(uploaded_file)
     # Determine the number of channels  
     if data.ndim == 1:  
         st.session_state['file_channels'] = 1  # Mono  
     else:  
         st.session_state['file_channels'] = data.shape[1]  # Stereo or more
-    st.session_state['file'] = uploaded_file.getvalue()
+    # Raised warning if this condition met
+    if st.session_state['file_channels'] != 1:
+        print("Warning: audio is not mono! May be affecting the processing.")
+    if st.session_state['file_sample_rate'] != 16000:
+        print("Warning: audio sample rate is not 16000 Hz! May be affecting the processing.")
 
 # Dropdown list of what data will be transcribed
 data_str = st.selectbox(
@@ -138,6 +169,7 @@ elif data_str == "File":
 
 # Button for transcription
 if st.button('Transcribe'):
+    start = time.time()
     if store_str == "Local":
         with st.spinner('Transcribing...'):
             if stt_str == "Azure":  
@@ -153,6 +185,7 @@ if st.button('Transcribe'):
                     client,
                     content=bytes_data
                 )
+            end = time.time() - start
 
     elif store_str == "Cloud":
         with st.spinner('Transcribing...'):
@@ -176,6 +209,9 @@ if st.button('Transcribe'):
                     sample_rate=sample_rate,
                     num_channels=num_channels
                 )
+            end = time.time() - start
+
+    st.write(f"Transcription took {end:.2f} seconds")
   
     if patient_name != '':
         patient_str = "Nama pasien: " + patient_name + "\n"

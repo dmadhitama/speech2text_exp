@@ -7,13 +7,12 @@ def recognize_using_groq(
         model: str = "whisper-large-v3"  # Optional, defaults to ""whisper-large-v3""
     ):
 
-    # filename = "/Users/donnymirzaadhitama/Documents/david.wav"
     with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as temp_file:
         temp_file.write(content)
         temp_file.seek(0)
 
     transcription = client.audio.transcriptions.create(
-        file=(temp_file.name, content),#file.read()), #(filename, file.read()),
+        file=(temp_file.name, content),
         model=model,
         prompt="Specify context or spelling",  # Optional
         response_format="json",  # Optional
