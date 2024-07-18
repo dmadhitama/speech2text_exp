@@ -5,7 +5,7 @@ config = CopilotSettings()
 
 def groq(
     config=config,
-    model="gemma2-9b-it"
+    model="gemma2-9b-it",
 ):
     return ChatGroq(
         temperature=0,

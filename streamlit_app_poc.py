@@ -55,13 +55,12 @@ if 'credentials' not in st.session_state:
         vertexai.init(project=PROJECT_ID, location=REGION, credentials=credentials)
 
 # Page title
-st.set_page_config(page_title='🏥 Speech/Text to SOAP App')
+st.set_page_config(page_title='🏥 Speech/Text to SOAP App')#, layout="wide")
 st.title('🏥 Speech/Text to SOAP App')
 # Input patient name
 patient_name = st.text_input("Patient name", "")
 
-# SOAP prompt system loading
-system_message = sys_prompt.system_message
+# ================ STT AREA ================
 
 # Dropdown list of STT models  
 stt_str = st.selectbox(
@@ -74,17 +73,6 @@ stt_str = st.selectbox(
     )
 )
 # stt_str = "Vertex AI"
-
-# Dropdown list of LLMs
-llm_str = st.selectbox(
-    "Large Language Models",
-    (
-        "GPT-4", 
-        "Gemini-1.5", 
-        "Groq"
-    )
-)
-# llm_str = "Groq"
 
 # Initialize session state for audio data and transcript
 if 'audio_data' not in st.session_state:
@@ -101,15 +89,36 @@ if 'file_sample_rate' not in st.session_state:
     st.session_state['file_sample_rate'] = 0
 if 'file_channels' not in st.session_state:
     st.session_state['file_channels'] = 0
-  
-# Audio recording  
-new_audio_data = st_audiorec()  
+
+from streamlit_mic_recorder import mic_recorder
+audio = mic_recorder(
+    start_prompt="Start recording",
+    stop_prompt="Stop recording",
+    just_once=False,
+    use_container_width=False,
+    format="wav",
+    callback=None,
+    args=(),
+    kwargs={},
+    key=None
+)
+# audio:
+# {
+#     "bytes": audio_bytes,  # audio bytes mono signal, can be processed directly by st.audio
+#     "sample_rate": sample_rate,  # depends on your browser's audio configuration
+#     "sample_width": sample_width,  # 2
+#     "format": "webm", # The file format of the audio sample
+#     "id": id  # A unique timestamp identifier of the audio
+# }
+
 # Audio file uploading
 uploaded_file = st.file_uploader("Choose an audio file", type=["wav"])
   
 # Update session state with new audio data  
-if new_audio_data is not None:  
-    st.session_state['audio_data'] = new_audio_data
+if audio is not None:
+    st.write("Recorded audio data")
+    st.audio(audio["bytes"], format='audio/wav')
+    st.session_state['audio_data'] = audio["bytes"]
 
     # convert the audio data bytes to 16000 Hz sample rate nad mono
     st.session_state['audio_data'] = convert_audio_from_bytes(
@@ -132,6 +141,7 @@ if new_audio_data is not None:
         print("Warning: audio sample rate is not 16000 Hz! May be affecting the processing.")
 
 if uploaded_file is not None:
+    st.write(f"Uploaded audio file: {uploaded_file.name}")
     st.audio(uploaded_file, format='audio/wav')
 
     # convert the audio data bytes to 16000 Hz sample rate and mono
@@ -162,6 +172,7 @@ data_str = st.selectbox(
     ("Recording", "File")
 )
 
+# Initialize some required variables for STT decoding
 if data_str == "Recording":
     bytes_data = st.session_state['audio_data']
     sample_rate = st.session_state['rec_sample_rate']
@@ -220,10 +231,27 @@ if st.button('Transcribe'):
 
 # Text area for transcript
 txt_input = st.text_area('Transcription result', st.session_state['transcript'], height=200)  
-  
+
+# ============== LLM AREA ==============
+
+# SOAP prompt system loading
+system_message = sys_prompt.system_message
+
+# Dropdown list of LLMs
+llm_str = st.selectbox(
+    "Large Language Models",
+    (
+        "GPT-4", 
+        "Gemini-1.5", 
+        "Groq (Gemma2 9b)",
+        "Groq (Llama3 70b)"
+    )
+)
+# llm_str = "Groq"
+
 # Form to accept user's text input for summarization  
 with st.form('summarize_form', clear_on_submit=True):
-    if st.form_submit_button('Generate SOAP Note'):
+    if st.form_submit_button('Generate SOAP'):
         with st.spinner('Processing...'):
             start = time.time()
             prompt = ChatPromptTemplate.from_messages(  
@@ -236,14 +264,16 @@ with st.form('summarize_form', clear_on_submit=True):
                 llm = gpt()  
             elif llm_str == "Gemini-1.5":  
                 llm = gemini()  
-            elif llm_str == "Groq":
+            elif llm_str == "Groq (Gemma2 9b)":
                 llm = groq() 
+            elif llm_str == "Groq (Llama3 70b)":
+                llm = groq(model="llama3-70b-8192") 
   
             chain = prompt | llm  
             response = chain.invoke({"question": txt_input})  
 
             end = time.time() - start
-            st.write(f"Transcription took {end:.2f} seconds")
+            st.write(f"SOAP note generation took {end:.2f} seconds")
   
         if not isinstance(response, str):  
             st.info(response.content)  
