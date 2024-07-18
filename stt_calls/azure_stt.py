@@ -7,7 +7,7 @@ config = CopilotSettings()
 def recognize_using_azure(
         content: bytes,
         language: str = "id-ID",
-        silence_timeout: str = "3000",
+        silence_timeout: str = "5000",
     ):
     # This example requires environment variables named "SPEECH_KEY" and "SPEECH_REGION"
     speech_config = speechsdk.SpeechConfig(
@@ -42,4 +42,4 @@ def recognize_using_azure(
             print("Error details: {}".format(cancellation_details.error_details))
             print("Did you set the speech resource key and region values?")
     
-    return speech_recognition_result
+    return speech_recognition_result.text

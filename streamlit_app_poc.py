@@ -2,7 +2,6 @@ import streamlit as st
 from settings import CopilotSettings  
 from langchain_core.prompts import ChatPromptTemplate  
 import os  
-from streamlit_chat import message  
 from st_audiorec import st_audiorec  
 import soundfile as sf
 from pydub import AudioSegment 
@@ -13,6 +12,7 @@ import time
 
 from llms.azure_llm import gpt
 from llms.vertexai_llm import gemini
+from llms.groq_llm import groq
 from prompts import sys_prompt
 from stt_calls.groq_stt import recognize_using_groq
 from stt_calls.azure_stt import recognize_using_azure
@@ -66,16 +66,25 @@ system_message = sys_prompt.system_message
 # Dropdown list of STT models  
 stt_str = st.selectbox(
     "Speech to Text Models",
-    ("Azure", "Vertex AI", "Groq")
+    (
+        "Azure (Local Processing)", 
+        "Vertex AI (Local Processing)", 
+        "Vertex AI (Cloud Processing)",
+        "Groq (Local Processing)",
+    )
 )
 # stt_str = "Vertex AI"
 
 # Dropdown list of LLMs
-# llm_str = st.selectbox(
-#     "Large Language Models",
-#     ("GPT-4", "Gemini-1.5")
-# )
-llm_str = "Gemini-1.5"
+llm_str = st.selectbox(
+    "Large Language Models",
+    (
+        "GPT-4", 
+        "Gemini-1.5", 
+        "Groq"
+    )
+)
+# llm_str = "Groq"
 
 # Initialize session state for audio data and transcript
 if 'audio_data' not in st.session_state:
@@ -152,11 +161,11 @@ data_str = st.selectbox(
     "What data will be transcribed?",
     ("Recording", "File")
 )
-# Drop down whether file saved locally or on cloud
-store_str = st.selectbox(
-    "Where to store audio file?",
-    ("Local", "Cloud")
-)
+# # Drop down whether file saved locally or on cloud
+# store_str = st.selectbox(
+#     "Where to store audio file?",
+#     ("Local", "Cloud")
+# )
 
 if data_str == "Recording":
     bytes_data = st.session_state['audio_data']
@@ -170,46 +179,66 @@ elif data_str == "File":
 # Button for transcription
 if st.button('Transcribe'):
     start = time.time()
-    if store_str == "Local":
-        with st.spinner('Transcribing...'):
-            if stt_str == "Azure":  
-                st.session_state['transcript'] = recognize_using_azure(content=bytes_data)  
-            elif stt_str == "Vertex AI":  
-                st.session_state['transcript'] = recognize_using_vertexai(
-                    content=bytes_data,
-                    sample_rate=sample_rate,
-                    num_channels=num_channels
-                )
-            elif stt_str == "Groq":
-                st.session_state['transcript'] = recognize_using_groq(
-                    client,
-                    content=bytes_data
-                )
-            end = time.time() - start
+    with st.spinner('Transcribing...'):
+        if stt_str == "Azure (Local Processing)":  
+            st.session_state['transcript'] = recognize_using_azure(content=bytes_data)
 
-    elif store_str == "Cloud":
-        with st.spinner('Transcribing...'):
-            if stt_str == "Azure":
-                pass
-            elif stt_str == "Vertex AI":
-                bucket_name = 'stt-poc-demo'
-                wavname = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16))
-                destination_blob_name = f'audio_files/{wavname}.wav'  # Unique filename for the blob
-                print("Uploading file to bucket...")
-                gcs_uri = upload_wav_to_gcs(
-                    bytes_data, 
-                    sample_rate, 
-                    num_channels, 
-                    bucket_name, 
-                    destination_blob_name
-                )
-                print("File uploaded to bucket!")
-                st.session_state['transcript'] = recognize_using_vertexai_via_uri(
-                    gcs_uri=gcs_uri,
-                    sample_rate=sample_rate,
-                    num_channels=num_channels
-                )
-            end = time.time() - start
+        elif stt_str == "Vertex AI (Local Processing)":  
+            st.session_state['transcript'] = recognize_using_vertexai(
+                content=bytes_data,
+                sample_rate=sample_rate,
+                num_channels=num_channels
+            )
+
+        elif stt_str == "Vertex AI (Cloud Processing)":
+            bucket_name = 'stt-poc-demo'
+            wavname = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16))
+            destination_blob_name = f'audio_files/{wavname}.wav'  # Unique filename for the blob
+            print("Uploading file to bucket...")
+            gcs_uri = upload_wav_to_gcs(
+                bytes_data, 
+                sample_rate, 
+                num_channels, 
+                bucket_name, 
+                destination_blob_name
+            )
+            print("File uploaded to bucket!")
+            st.session_state['transcript'] = recognize_using_vertexai_via_uri(
+                gcs_uri=gcs_uri,
+                sample_rate=sample_rate,
+                num_channels=num_channels
+            )
+
+        elif stt_str == "Groq (Local Processing)":
+            st.session_state['transcript'] = recognize_using_groq(
+                client,
+                content=bytes_data
+            )
+        end = time.time() - start
+
+    # elif store_str == "Cloud":
+    #     with st.spinner('Transcribing...'):
+    #         if stt_str == "Azure":
+    #             pass
+    #         elif stt_str == "Vertex AI":
+    #             bucket_name = 'stt-poc-demo'
+    #             wavname = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16))
+    #             destination_blob_name = f'audio_files/{wavname}.wav'  # Unique filename for the blob
+    #             print("Uploading file to bucket...")
+    #             gcs_uri = upload_wav_to_gcs(
+    #                 bytes_data, 
+    #                 sample_rate, 
+    #                 num_channels, 
+    #                 bucket_name, 
+    #                 destination_blob_name
+    #             )
+    #             print("File uploaded to bucket!")
+    #             st.session_state['transcript'] = recognize_using_vertexai_via_uri(
+    #                 gcs_uri=gcs_uri,
+    #                 sample_rate=sample_rate,
+    #                 num_channels=num_channels
+    #             )
+    #         end = time.time() - start
 
     st.write(f"Transcription took {end:.2f} seconds")
   
@@ -224,7 +253,8 @@ txt_input = st.text_area('Transcription result', st.session_state['transcript'],
 # Form to accept user's text input for summarization  
 with st.form('summarize_form', clear_on_submit=True):
     if st.form_submit_button('Generate SOAP Note'):
-        with st.spinner('Processing...'):  
+        with st.spinner('Processing...'):
+            start = time.time()
             prompt = ChatPromptTemplate.from_messages(  
                 [  
                     ("system", system_message),  
@@ -235,9 +265,14 @@ with st.form('summarize_form', clear_on_submit=True):
                 llm = gpt()  
             elif llm_str == "Gemini-1.5":  
                 llm = gemini()  
+            elif llm_str == "Groq":
+                llm = groq() 
   
             chain = prompt | llm  
             response = chain.invoke({"question": txt_input})  
+
+            end = time.time() - start
+            st.write(f"Transcription took {end:.2f} seconds")
   
         if not isinstance(response, str):  
             st.info(response.content)  
