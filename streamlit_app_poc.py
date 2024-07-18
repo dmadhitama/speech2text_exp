@@ -161,11 +161,6 @@ data_str = st.selectbox(
     "What data will be transcribed?",
     ("Recording", "File")
 )
-# # Drop down whether file saved locally or on cloud
-# store_str = st.selectbox(
-#     "Where to store audio file?",
-#     ("Local", "Cloud")
-# )
 
 if data_str == "Recording":
     bytes_data = st.session_state['audio_data']
@@ -215,30 +210,6 @@ if st.button('Transcribe'):
                 content=bytes_data
             )
         end = time.time() - start
-
-    # elif store_str == "Cloud":
-    #     with st.spinner('Transcribing...'):
-    #         if stt_str == "Azure":
-    #             pass
-    #         elif stt_str == "Vertex AI":
-    #             bucket_name = 'stt-poc-demo'
-    #             wavname = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16))
-    #             destination_blob_name = f'audio_files/{wavname}.wav'  # Unique filename for the blob
-    #             print("Uploading file to bucket...")
-    #             gcs_uri = upload_wav_to_gcs(
-    #                 bytes_data, 
-    #                 sample_rate, 
-    #                 num_channels, 
-    #                 bucket_name, 
-    #                 destination_blob_name
-    #             )
-    #             print("File uploaded to bucket!")
-    #             st.session_state['transcript'] = recognize_using_vertexai_via_uri(
-    #                 gcs_uri=gcs_uri,
-    #                 sample_rate=sample_rate,
-    #                 num_channels=num_channels
-    #             )
-    #         end = time.time() - start
 
     st.write(f"Transcription took {end:.2f} seconds")
   
