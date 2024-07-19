@@ -1,0 +1,170 @@
+<!DOCTYPE html>  
+<html lang="en">  
+<head>  
+    <meta charset="UTF-8">  
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">  
+    <title>Speech or Text to SOAP Note</title>  
+    <style>  
+        body {  
+            font-family: Arial, sans-serif;  
+            margin: 0;  
+            padding: 20px;  
+            background-color: #f4f4f4;  
+            color: #333;  
+        }  
+        .container {  
+            max-width: 800px;  
+            margin: 0 auto;  
+            background-color: #fff;  
+            padding: 20px;  
+            border-radius: 10px;  
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);  
+        }  
+        h1 {  
+            text-align: center;  
+            color: #333;  
+            margin-bottom: 20px;  
+        }  
+        .form-group {  
+            margin-bottom: 20px;  
+        }  
+        label {  
+            display: block;  
+            margin-bottom: 5px;  
+            color: #555;  
+        }  
+        input[type="text"],  
+        select,  
+        textarea {  
+            width: 100%;  
+            padding: 10px;  
+            margin-top: 5px;  
+            border: 1px solid #ccc;  
+            border-radius: 5px;  
+            box-sizing: border-box;  
+        }  
+        button {  
+            width: 100%;  
+            padding: 10px;  
+            border: none;  
+            border-radius: 5px;  
+            background-color: #007bff;  
+            color: #fff;  
+            font-size: 16px;  
+            cursor: pointer;  
+            position: relative;  
+        }  
+        button:disabled {  
+            background-color: #ccc;  
+        }  
+        .spinner {  
+            display: none;  
+            width: 20px;  
+            height: 20px;  
+            border: 2px solid #f3f3f3;  
+            border-top: 2px solid #007bff;  
+            border-radius: 50%;  
+            animation: spin 1s linear infinite;  
+            position: absolute;  
+            top: 50%;  
+            left: 50%;  
+            transform: translate(-50%, -50%);  
+        }  
+        @keyframes spin {  
+            0% { transform: rotate(0deg); }  
+            100% { transform: rotate(360deg); }  
+        }  
+        audio {  
+            width: 100%;  
+            margin-top: 10px;  
+        }  
+        .processing-time {  
+            text-align: center;  
+            margin-top: 10px;  
+            font-size: 14px;  
+            color: #555;  
+        }  
+        .markdown-container {  
+            margin-top: 10px;  
+        }  
+        .markdown-preview {  
+            display: none;  
+            border: 1px solid #ccc;  
+            padding: 10px;  
+            border-radius: 5px;  
+            background-color: #f9f9f9;  
+        }  
+    </style>  
+</head>  
+<body>  
+    <div class="container">  
+        <h1>Speech or Text to SOAP Note</h1>  
+        <div class="form-group">  
+            <label for="patientName">Patient Name:</label>  
+            <input type="text" id="patientName" name="patientName">  
+        </div>  
+        <div class="form-group">  
+            <label for="sttModel">STT Model:</label>  
+            <select id="sttModel" name="sttModel">  
+                <option value="azure">Azure</option>  
+                <option value="vertex">Vertex</option>  
+                <option value="vertex_cloud">Vertex Cloud</option>  
+                <option value="groq">Groq</option>  
+            </select>  
+        </div>  
+        <div class="form-group">  
+            <button id="startRecording">Start Recording</button>  
+            <button id="stopRecording" disabled>Stop Recording</button>  
+            <audio id="audioPlayback" controls></audio>  
+        </div>  
+        <div class="form-group">  
+            <label for="audioFile">Upload Audio File:</label>  
+            <input type="file" id="audioFile" accept="audio/*">  
+            <audio id="fileAudioPlayback" controls></audio>  
+        </div>  
+        <div class="form-group">  
+            <button id="transcribe">  
+                Transcribe  
+                <div class="spinner" id="transcribeSpinner"></div>  
+            </button>  
+            <div id="transcribeProcessingTime" class="processing-time"></div>  
+        </div>  
+        <div class="form-group">  
+            <label for="transcriptionResult">Transcription Result:</label>  
+            <textarea id="transcriptionResult" rows="5" placeholder="Transcription result will appear here..."></textarea>  
+            <div class="markdown-container">  
+                <input type="checkbox" id="markdownTranscription" name="markdownTranscription">  
+                <label for="markdownTranscription">Enable Markdown</label>  
+                <div id="transcriptionMarkdownPreview" class="markdown-preview"></div>  
+            </div>  
+        </div>  
+        <div class="form-group">  
+            <label for="llmModel">LLM Model:</label>  
+            <select id="llmModel" name="llmModel">  
+                <option value="gpt4">GPT-4</option>  
+                <option value="gemini">Gemini</option>  
+                <option value="groq_gemma2">Groq Gemma2</option>  
+                <option value="groq_llama3">Groq Llama3</option>  
+            </select>  
+        </div>  
+        <div class="form-group">  
+            <button id="generateSoap">  
+                Generate SOAP  
+                <div class="spinner" id="soapSpinner"></div>  
+            </button>  
+            <div id="soapProcessingTime" class="processing-time"></div>  
+        </div>  
+        <div class="form-group">  
+            <label for="soapResult">SOAP Note:</label>  
+            <textarea id="soapResult" rows="5" placeholder="SOAP note will appear here..."></textarea>  
+            <div class="markdown-container">  
+                <input type="checkbox" id="markdownSoap" name="markdownSoap">  
+                <label for="markdownSoap">Enable Markdown</label>  
+                <div id="soapMarkdownPreview" class="markdown-preview"></div>  
+            </div>  
+        </div>  
+    </div>  
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>  
+    <script src="script.js"></script>  
+</body>  
+</html>  
