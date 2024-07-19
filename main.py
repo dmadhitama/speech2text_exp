@@ -71,13 +71,17 @@ async def transcribe(
       
     # Convert audio file to required format  
     audio_segment = AudioSegment.from_file(BytesIO(audio_data))  
-    audio_segment = audio_segment.set_frame_rate(16000).set_channels(1)  
+    audio_segment = audio_segment.set_frame_rate(16000).set_channels(1).set_sample_width(2)
     audio_data = audio_segment.export(format="wav").read()  
       
     if stt_model == "azure":  
         transcript = recognize_using_azure(audio_data)  
     elif stt_model == "vertex":  
-        transcript = recognize_using_vertexai(audio_data)  
+        transcript = recognize_using_vertexai(
+            audio_data,
+            sample_rate=audio_segment.frame_rate,
+            num_channels=audio_segment.channels,
+        )
     elif stt_model == "vertex_cloud":
         bucket_name = 'stt-poc-demo'
         wavname = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16))

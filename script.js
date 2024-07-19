@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {  
-  const startRecordingButton = document.getElementById('startRecording');  
-  const stopRecordingButton = document.getElementById('stopRecording');  
+  const recordButton = document.getElementById('recordButton');  
   const audioPlayback = document.getElementById('audioPlayback');  
   const audioFileInput = document.getElementById('audioFile');  
   const fileAudioPlayback = document.getElementById('fileAudioPlayback');  
@@ -18,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const advancedOptions = document.querySelectorAll('.advanced-option');  
   let audioBlob = null;  
   let mediaRecorder = null;  
+  let isRecording = false;  
 
   const renderMarkdown = (textarea, preview) => {  
       preview.innerHTML = marked.parse(textarea.value);  
@@ -58,39 +58,40 @@ document.addEventListener('DOMContentLoaded', () => {
   // Enable markdown by default for SOAP note  
   renderMarkdown(soapResult, soapMarkdownPreview);  
 
-  startRecordingButton.addEventListener('click', () => {  
-      console.log('Start recording button clicked');  
-      navigator.mediaDevices.getUserMedia({ audio: true })  
-          .then(stream => {  
-              mediaRecorder = new MediaRecorder(stream);  
-              mediaRecorder.start();  
-              console.log('Recording started');  
+  recordButton.addEventListener('click', () => {  
+      if (!isRecording) {  
+          // Start recording  
+          navigator.mediaDevices.getUserMedia({ audio: true })  
+              .then(stream => {  
+                  mediaRecorder = new MediaRecorder(stream);  
+                  mediaRecorder.start();  
+                  isRecording = true;  
+                  recordButton.textContent = 'Stop Recording';  
+                  recordButton.classList.add('stop-button');  
+                  console.log('Recording started');  
 
-              const audioChunks = [];  
-              mediaRecorder.addEventListener('dataavailable', event => {  
-                  audioChunks.push(event.data);  
+                  const audioChunks = [];  
+                  mediaRecorder.addEventListener('dataavailable', event => {  
+                      audioChunks.push(event.data);  
+                  });  
+
+                  mediaRecorder.addEventListener('stop', () => {  
+                      audioBlob = new Blob(audioChunks, { type: 'audio/wav' });  
+                      const audioUrl = URL.createObjectURL(audioBlob);  
+                      audioPlayback.src = audioUrl;  
+                      isRecording = false;  
+                      recordButton.textContent = 'Start Recording';  
+                      recordButton.classList.remove('stop-button');  
+                      console.log('Recording stopped');  
+                  });  
+              })  
+              .catch(error => {  
+                  console.error('Error accessing microphone', error);  
               });  
-
-              mediaRecorder.addEventListener('stop', () => {  
-                  audioBlob = new Blob(audioChunks, { type: 'audio/wav' });  
-                  const audioUrl = URL.createObjectURL(audioBlob);  
-                  audioPlayback.src = audioUrl;  
-                  console.log('Recording stopped');  
-              });  
-
-              startRecordingButton.disabled = true;  
-              stopRecordingButton.disabled = false;  
-          })  
-          .catch(error => {  
-              console.error('Error accessing microphone', error);  
-          });  
-  });  
-
-  stopRecordingButton.addEventListener('click', () => {  
-      console.log('Stop recording button clicked');  
-      mediaRecorder.stop();  
-      startRecordingButton.disabled = false;  
-      stopRecordingButton.disabled = true;  
+      } else {  
+          // Stop recording  
+          mediaRecorder.stop();  
+      }  
   });  
 
   audioFileInput.addEventListener('change', (event) => {  

@@ -3,7 +3,7 @@
 <head>  
     <meta charset="UTF-8">  
     <meta name="viewport" content="width=device-width, initial-scale=1.0">  
-    <title>Speech or Text to SOAP Note</title>  
+    <title>🏥 Speech (or Text) to SOAP Note</title>  
     <style>  
         body {  
             font-family: Arial, sans-serif;  
@@ -77,6 +77,9 @@
         button:disabled {  
             background-color: #ccc;  
         }  
+        .stop-button {  
+            background-color: #dc3545;  
+        }  
         .spinner {  
             display: none;  
             width: 20px;  
@@ -122,7 +125,7 @@
 <body>  
     <div class="main-container">  
         <div class="container">  
-            <h1>Speech or Text to SOAP Note</h1>  
+            <h1>🏥 Speech (or Text) to SOAP Note</h1>  
             <div class="form-group">  
                 <label for="patientName">Patient Name:</label>  
                 <input type="text" id="patientName" name="patientName">  
@@ -158,8 +161,7 @@
         <div class="side-container">  
             <div class="audio-container">  
                 <div class="form-group">  
-                    <button id="startRecording">Start Recording</button>  
-                    <button id="stopRecording" disabled>Stop Recording</button>  
+                    <button id="recordButton">Start Recording</button>  
                     <audio id="audioPlayback" controls></audio>  
                 </div>  
                 <div class="form-group">  
@@ -177,8 +179,8 @@
                     <label for="sttModel">STT Model:</label>  
                     <select id="sttModel" name="sttModel">  
                         <option value="azure">Azure</option>  
-                        <option value="vertex">Vertex AI</option>  
-                        <option value="vertex_cloud">Vertex AI (Cloud)</option>  
+                        <option value="vertex">Vertex</option>  
+                        <option value="vertex_cloud">Vertex Cloud</option>  
                         <option value="groq">Groq</option>  
                     </select>  
                 </div>  
@@ -186,9 +188,9 @@
                     <label for="llmModel">LLM Model:</label>  
                     <select id="llmModel" name="llmModel">  
                         <option value="gpt4">GPT-4</option>  
-                        <option value="gemini">Gemini-1.5</option>  
-                        <option value="groq_gemma2">Groq (Gemma2)</option>  
-                        <option value="groq_llama3">Groq (Llama3)</option>  
+                        <option value="gemini">Gemini</option>  
+                        <option value="groq_gemma2">Groq Gemma2</option>  
+                        <option value="groq_llama3">Groq Llama3</option>  
                     </select>  
                 </div>  
             </div>  
