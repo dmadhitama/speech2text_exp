@@ -8,14 +8,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const generateSoapButton = document.getElementById('generateSoap');  
   const transcribeProcessingTime = document.getElementById('transcribeProcessingTime');  
   const soapProcessingTime = document.getElementById('soapProcessingTime');  
-  const markdownTranscription = document.getElementById('markdownTranscription');  
   const markdownSoap = document.getElementById('markdownSoap');  
   const transcriptionResult = document.getElementById('transcriptionResult');  
   const soapResult = document.getElementById('soapResult');  
-  const transcriptionMarkdownPreview = document.getElementById('transcriptionMarkdownPreview');  
   const soapMarkdownPreview = document.getElementById('soapMarkdownPreview');  
   const transcribeSpinner = document.getElementById('transcribeSpinner');  
   const soapSpinner = document.getElementById('soapSpinner');  
+  const advancedModeCheckbox = document.getElementById('advancedMode');  
+  const advancedOptions = document.querySelectorAll('.advanced-option');  
   let audioBlob = null;  
   let mediaRecorder = null;  
 
@@ -30,14 +30,6 @@ document.addEventListener('DOMContentLoaded', () => {
       textarea.style.display = 'block';  
   };  
 
-  markdownTranscription.addEventListener('change', () => {  
-      if (markdownTranscription.checked) {  
-          renderMarkdown(transcriptionResult, transcriptionMarkdownPreview);  
-      } else {  
-          hideMarkdown(transcriptionResult, transcriptionMarkdownPreview);  
-      }  
-  });  
-
   markdownSoap.addEventListener('change', () => {  
       if (markdownSoap.checked) {  
           renderMarkdown(soapResult, soapMarkdownPreview);  
@@ -46,17 +38,25 @@ document.addEventListener('DOMContentLoaded', () => {
       }  
   });  
 
-  transcriptionResult.addEventListener('input', () => {  
-      if (markdownTranscription.checked) {  
-          renderMarkdown(transcriptionResult, transcriptionMarkdownPreview);  
-      }  
-  });  
-
   soapResult.addEventListener('input', () => {  
       if (markdownSoap.checked) {  
           renderMarkdown(soapResult, soapMarkdownPreview);  
       }  
   });  
+
+  advancedModeCheckbox.addEventListener('change', () => {  
+      advancedOptions.forEach(option => {  
+          option.style.display = advancedModeCheckbox.checked ? 'block' : 'none';  
+      });  
+  });  
+
+  // Ensure advanced options are visible by default  
+  advancedOptions.forEach(option => {  
+      option.style.display = 'block';  
+  });  
+
+  // Enable markdown by default for SOAP note  
+  renderMarkdown(soapResult, soapMarkdownPreview);  
 
   startRecordingButton.addEventListener('click', () => {  
       console.log('Start recording button clicked');  
@@ -133,10 +133,6 @@ document.addEventListener('DOMContentLoaded', () => {
               const endTime = performance.now();  
               const processingTime = ((endTime - startTime) / 1000).toFixed(2);  
               transcribeProcessingTime.textContent = `Transcription processing time: ${processingTime} seconds`;  
-
-              if (markdownTranscription.checked) {  
-                  renderMarkdown(transcriptionResult, transcriptionMarkdownPreview);  
-              }  
           })  
           .catch(error => {  
               console.error('Error transcribing audio', error);  
