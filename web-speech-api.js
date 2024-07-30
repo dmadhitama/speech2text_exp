@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const soapSpinner = document.getElementById('soapSpinner');  
     const advancedModeCheckbox = document.getElementById('advancedMode');  
     const advancedOptions = document.querySelectorAll('.advanced-option');  
+    const languageOption = document.querySelector('.language-option');  
     const selectLanguage = document.getElementById('select_language');  
     let audioBlob = null;  
     let mediaRecorder = null;  
@@ -57,6 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
         advancedOptions.forEach(option => {  
             option.style.display = advancedModeCheckbox.checked ? 'block' : 'none';  
         });  
+        languageOption.style.display = advancedModeCheckbox.checked ? 'none' : 'block';  
     });  
   
     // Ensure advanced options are visible by default  

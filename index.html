@@ -173,7 +173,11 @@
             <div class="settings-container">  
                 <div class="advanced-mode-container">  
                     <input type="checkbox" id="advancedMode" name="advancedMode" checked>  
-                    <label for="advancedMode">Advance mode</label>  
+                    <label for="advancedMode">Advanced mode</label>  
+                </div>  
+                <div class="form-group advanced-option">  
+                    <label for="select_language">Language:</label>  
+                    <select id="select_language" name="select_language"></select>  
                 </div>  
                 <div class="form-group advanced-option">  
                     <label for="sttModel">STT Model:</label>  
@@ -193,10 +197,12 @@
                         <option value="groq_llama3">Groq Llama3</option>  
                     </select>  
                 </div>  
-            </div>  
+            </div>                            
         </div>  
     </div>  
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>  
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>   
+    <script src="web-speech-api.js"></script>  
+    <script src="language.js"></script>  
     <script src="script.js"></script>  
 </body>  
 </html>  
