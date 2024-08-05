@@ -15,13 +15,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const soapSpinner = document.getElementById('soapSpinner');  
     const advancedModeCheckbox = document.getElementById('advancedMode');  
     const advancedOptions = document.querySelectorAll('.advanced-option');  
+    const languageOption = document.querySelector('.language-option');  
     const selectLanguage = document.getElementById('select_language');  
     let audioBlob = null;  
     let mediaRecorder = null;  
     let isRecording = false;  
     let recognition = null;  
     let final_transcript = '';  
-    let audioStream = null;  
   
     // Populate language dropdown  
     for (let i = 0; i < langs.length; i++) {  
@@ -58,6 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
         advancedOptions.forEach(option => {  
             option.style.display = advancedModeCheckbox.checked ? 'block' : 'none';  
         });  
+        languageOption.style.display = advancedModeCheckbox.checked ? 'none' : 'block';  
     });  
   
     // Ensure advanced options are visible by default  
@@ -68,94 +69,73 @@ document.addEventListener('DOMContentLoaded', () => {
     // Enable markdown by default for SOAP note  
     renderMarkdown(soapResult, soapMarkdownPreview);  
   
-    const getMicrophoneAccess = () => {  
-        return navigator.mediaDevices.getUserMedia({ audio: true })  
-            .then(stream => {  
-                audioStream = stream;  
-                return stream;  
-            })  
-            .catch(error => {  
-                console.error('Error accessing microphone', error);  
-                throw error;  
-            });  
-    };  
-  
-    const startRecording = () => {  
-        if (!audioStream) {  
-            getMicrophoneAccess().then(() => {  
-                startMediaRecorder();  
-                startSpeechRecognition();  
-            });  
-        } else {  
-            startMediaRecorder();  
-            startSpeechRecognition();  
-        }  
-    };  
-  
-    const startMediaRecorder = () => {  
-        mediaRecorder = new MediaRecorder(audioStream);  
-        mediaRecorder.start();  
-        isRecording = true;  
-        recordButton.textContent = 'Stop Recording';  
-        recordButton.classList.add('stop-button');  
-        console.log('Recording started');  
-        const audioChunks = [];  
-        mediaRecorder.addEventListener('dataavailable', event => {  
-            audioChunks.push(event.data);  
-        });  
-        mediaRecorder.addEventListener('stop', () => {  
-            audioBlob = new Blob(audioChunks, { type: 'audio/wav' });  
-            const audioUrl = URL.createObjectURL(audioBlob);  
-            audioPlayback.src = audioUrl;  
-            isRecording = false;  
-            recordButton.textContent = 'Start Recording';  
-            recordButton.classList.remove('stop-button');  
-            console.log('Recording stopped');  
-        });  
-    };  
-  
-    const startSpeechRecognition = () => {  
-        if (!('webkitSpeechRecognition' in window)) {  
-            console.error('Web Speech API is not supported by this browser.');  
-            return;  
-        }  
-  
-        recognition = new webkitSpeechRecognition();  
-        recognition.continuous = true;  
-        recognition.interimResults = true;  
-        recognition.lang = selectLanguage.value;  
-  
-        recognition.onstart = function() {  
-            console.log('Speech recognition started');  
-        };  
-  
-        recognition.onerror = function(event) {  
-            console.error('Speech recognition error', event);  
-        };  
-  
-        recognition.onend = function() {  
-            console.log('Speech recognition ended');  
-        };  
-  
-        recognition.onresult = function(event) {  
-            let interim_transcript = '';  
-            for (let i = event.resultIndex; i < event.results.length; ++i) {  
-                if (event.results[i].isFinal) {  
-                    final_transcript += event.results[i][0].transcript;  
-                } else {  
-                    interim_transcript += event.results[i][0].transcript;  
-                }  
-            }  
-            transcriptionResult.value = final_transcript + interim_transcript;  
-        };  
-  
-        recognition.start();  
-    };  
-  
     recordButton.addEventListener('click', () => {  
         if (!isRecording) {  
-            startRecording();  
+            // Start recording  
+            navigator.mediaDevices.getUserMedia({ audio: true })  
+                .then(stream => {  
+                    mediaRecorder = new MediaRecorder(stream);  
+                    mediaRecorder.start();  
+                    isRecording = true;  
+                    recordButton.textContent = 'Stop Recording';  
+                    recordButton.classList.add('stop-button');  
+                    console.log('Recording started');  
+                    const audioChunks = [];  
+                    mediaRecorder.addEventListener('dataavailable', event => {  
+                        audioChunks.push(event.data);  
+                    });  
+                    mediaRecorder.addEventListener('stop', () => {  
+                        audioBlob = new Blob(audioChunks, { type: 'audio/wav' });  
+                        const audioUrl = URL.createObjectURL(audioBlob);  
+                        audioPlayback.src = audioUrl;  
+                        isRecording = false;  
+                        recordButton.textContent = 'Start Recording';  
+                        recordButton.classList.remove('stop-button');  
+                        console.log('Recording stopped');  
+                    });  
+  
+                    // Start Web Speech API recognition  
+                    if (!('webkitSpeechRecognition' in window)) {  
+                        console.error('Web Speech API is not supported by this browser.');  
+                        return;  
+                    }  
+  
+                    recognition = new webkitSpeechRecognition();  
+                    recognition.continuous = true;  
+                    recognition.interimResults = true;  
+                    recognition.lang = selectLanguage.value;  
+  
+                    recognition.onstart = function() {  
+                        console.log('Speech recognition started');  
+                    };  
+  
+                    recognition.onerror = function(event) {  
+                        console.error('Speech recognition error', event);  
+                    };  
+  
+                    recognition.onend = function() {  
+                        console.log('Speech recognition ended');  
+                    };  
+  
+                    recognition.onresult = function(event) {  
+                        let interim_transcript = '';  
+                        for (let i = event.resultIndex; i < event.results.length; ++i) {  
+                            if (event.results[i].isFinal) {  
+                                final_transcript += event.results[i][0].transcript;  
+                            } else {  
+                                interim_transcript += event.results[i][0].transcript;  
+                            }  
+                        }  
+                        transcriptionResult.value = final_transcript + interim_transcript;  
+                    };  
+  
+                    recognition.start();  
+                })  
+                .catch(error => {  
+                    console.error('Error accessing microphone', error);  
+                });  
         } else {  
+            // Stop recording  
             mediaRecorder.stop();  
             if (recognition) {  
                 recognition.stop();  
@@ -183,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Show spinner  
         transcribeSpinner.style.display = 'block';  
         transcribeButton.disabled = true;  
-        fetch('http://127.0.0.1:8000/transcribe', {  
+        fetch('http://127.0.0.1:8008/transcribe', {  
             method: 'POST',  
             body: formData,  
         })  
@@ -220,7 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Show spinner  
         soapSpinner.style.display = 'block';  
         generateSoapButton.disabled = true;  
-        fetch('http://127.0.0.1:8000/generate_soap', {  
+        fetch('http://127.0.0.1:8008/generate_soap', {  
             method: 'POST',  
             body: formData,  
         })  

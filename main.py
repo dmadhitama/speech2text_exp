@@ -39,6 +39,7 @@ app.add_middleware(
     allow_headers=["*"],  # Allow all headers  
 )
 
+
 @app.on_event("startup")  
 async def startup_event():  
     # Initialize Vertex AI  
@@ -61,6 +62,15 @@ async def startup_event():
         credentials = service_account.Credentials.from_service_account_file(sa_file)  
         aiplatform.init(project=PROJECT_ID, location=REGION, credentials=credentials)  
         vertexai.init(project=PROJECT_ID, location=REGION, credentials=credentials)
+
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse 
+app.mount("/static", StaticFiles(directory="static"), name="static")
+# Serve the index.html file at the root URL
+@app.get("/")  
+def read_root():  
+    return FileResponse("static/index.html")   
+    # return {"Hello": "World"} 
   
 @app.post("/transcribe")  
 async def transcribe(

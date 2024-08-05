@@ -131,6 +131,7 @@ venv.bak/
 service_account/
 .streamlit/
 data/
+.sesskey
 
 # Spyder project settings
 .spyderproject
