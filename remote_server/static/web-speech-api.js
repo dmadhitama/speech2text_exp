@@ -151,77 +151,77 @@ document.addEventListener('DOMContentLoaded', () => {
         fileAudioPlayback.src = audioUrl;  
     });  
   
-    // transcribeButton.addEventListener('click', () => {  
-    //     console.log('Transcribe button clicked');  
-    //     const patientName = document.getElementById('patientName').value;  
-    //     const sttModel = document.getElementById('sttModel').value;  
-    //     // Create FormData to send audio file to the backend  
-    //     const formData = new FormData();  
-    //     formData.append('audio', audioBlob);  
-    //     formData.append('stt_model', sttModel);  
-    //     const startTime = performance.now();  
-    //     // Show spinner  
-    //     transcribeSpinner.style.display = 'block';  
-    //     transcribeButton.disabled = true;  
-    //     fetch('http://127.0.0.1:8008/transcribe', {  
-    //         method: 'POST',  
-    //         body: formData,  
-    //     })  
-    //         .then(response => {  
-    //             console.log('Received response from /transcribe');  
-    //             return response.json();  
-    //         })  
-    //         .then(data => {  
-    //             console.log('Transcription data:', data);  
-    //             const transcription = `Nama pasien: ${patientName}\n${data.transcription}`;  
-    //             transcriptionResult.value = transcription;  
-    //             const endTime = performance.now();  
-    //             const processingTime = ((endTime - startTime) / 1000).toFixed(2);  
-    //             transcribeProcessingTime.textContent = `Transcription processing time: ${processingTime} seconds`;  
-    //         })  
-    //         .catch(error => {  
-    //             console.error('Error transcribing audio', error);  
-    //         })  
-    //         .finally(() => {  
-    //             // Hide spinner  
-    //             transcribeSpinner.style.display = 'none';  
-    //             transcribeButton.disabled = false;  
-    //         });  
-    // });  
+    transcribeButton.addEventListener('click', () => {  
+        console.log('Transcribe button clicked');  
+        const patientName = document.getElementById('patientName').value;  
+        const sttModel = document.getElementById('sttModel').value;  
+        // Create FormData to send audio file to the backend  
+        const formData = new FormData();  
+        formData.append('audio', audioBlob);  
+        formData.append('stt_model', sttModel);  
+        const startTime = performance.now();  
+        // Show spinner  
+        transcribeSpinner.style.display = 'block';  
+        transcribeButton.disabled = true;  
+        fetch('https://34.101.81.10:3389/transcribe', { // Updated to HTTPS with IP address  
+            method: 'POST',  
+            body: formData,  
+        })  
+            .then(response => {  
+                console.log('Received response from /transcribe');  
+                return response.json();  
+            })  
+            .then(data => {  
+                console.log('Transcription data:', data);  
+                const transcription = `Nama pasien: ${patientName}\n${data.transcription}`;  
+                transcriptionResult.value = transcription;  
+                const endTime = performance.now();  
+                const processingTime = ((endTime - startTime) / 1000).toFixed(2);  
+                transcribeProcessingTime.textContent = `Transcription processing time: ${processingTime} seconds`;  
+            })  
+            .catch(error => {  
+                console.error('Error transcribing audio', error);  
+            })  
+            .finally(() => {  
+                // Hide spinner  
+                transcribeSpinner.style.display = 'none';  
+                transcribeButton.disabled = false;  
+            });  
+    });  
   
-    // generateSoapButton.addEventListener('click', () => {  
-    //     console.log('Generate SOAP button clicked');  
-    //     const transcription = transcriptionResult.value;  
-    //     const llmModel = document.getElementById('llmModel').value;  
-    //     const formData = new FormData();  
-    //     formData.append('transcription', transcription);  
-    //     formData.append('llm_model', llmModel);  
-    //     const startTime = performance.now();  
-    //     // Show spinner  
-    //     soapSpinner.style.display = 'block';  
-    //     generateSoapButton.disabled = true;  
-    //     fetch('http://127.0.0.1:8008/generate_soap', {  
-    //         method: 'POST',  
-    //         body: formData,  
-    //     })  
-    //         .then(response => response.json())  
-    //         .then(data => {  
-    //             console.log('SOAP note data:', data);  
-    //             soapResult.value = data.soap_note;  
-    //             const endTime = performance.now();  
-    //             const processingTime = ((endTime - startTime) / 1000).toFixed(2);  
-    //             soapProcessingTime.textContent = `SOAP generation processing time: ${processingTime} seconds`;  
-    //             if (markdownSoap.checked) {  
-    //                 renderMarkdown(soapResult, soapMarkdownPreview);  
-    //             }  
-    //         })  
-    //         .catch(error => {  
-    //             console.error('Error generating SOAP note', error);  
-    //         })  
-    //         .finally(() => {  
-    //             // Hide spinner  
-    //             soapSpinner.style.display = 'none';  
-    //             generateSoapButton.disabled = false;  
-    //         });  
-    // });  
+    generateSoapButton.addEventListener('click', () => {  
+        console.log('Generate SOAP button clicked');  
+        const transcription = transcriptionResult.value;  
+        const llmModel = document.getElementById('llmModel').value;  
+        const formData = new FormData();  
+        formData.append('transcription', transcription);  
+        formData.append('llm_model', llmModel);  
+        const startTime = performance.now();  
+        // Show spinner  
+        soapSpinner.style.display = 'block';  
+        generateSoapButton.disabled = true;  
+        fetch('https://34.101.81.10:3389/generate_soap', { // Updated to HTTPS with IP address  
+            method: 'POST',  
+            body: formData,  
+        })  
+            .then(response => response.json())  
+            .then(data => {  
+                console.log('SOAP note data:', data);  
+                soapResult.value = data.soap_note;  
+                const endTime = performance.now();  
+                const processingTime = ((endTime - startTime) / 1000).toFixed(2);  
+                soapProcessingTime.textContent = `SOAP generation processing time: ${processingTime} seconds`;  
+                if (markdownSoap.checked) {  
+                    renderMarkdown(soapResult, soapMarkdownPreview);  
+                }  
+            })  
+            .catch(error => {  
+                console.error('Error generating SOAP note', error);  
+            })  
+            .finally(() => {  
+                // Hide spinner  
+                soapSpinner.style.display = 'none';  
+                generateSoapButton.disabled = false;  
+            });  
+    });  
 });  
