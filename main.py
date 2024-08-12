@@ -25,6 +25,7 @@ from settings import CopilotSettings
 from llms.azure_llm import gpt
 from llms.vertexai_llm import gemini
 from llms.groq_llm import groq
+from llms.together_llm import together
 
 
 config = CopilotSettings()
@@ -127,14 +128,16 @@ async def generate_soap(
                 ("human", "{question}"),  
             ]
         )
-    if llm_model == "gpt4":  
-        llm = gpt()  
-    elif llm_model == "gemini":  
-        llm = gemini()  
-    elif llm_model == "groq_gemma2":  
-        llm = groq()  
-    elif llm_model == "groq_llama3":  
-        llm = groq(model="llama3-70b-8192")  
+    if llm_model == "gpt4":
+        llm = gpt()
+    elif llm_model == "gemini":
+        llm = gemini()
+    elif llm_model == "groq_gemma2":
+        llm = groq()
+    elif llm_model == "groq_llama3":
+        llm = groq(model="llama3-70b-8192")
+    elif llm_model == "together_exp":
+        llm = together()
       
     chain = prompt | llm
     response = chain.invoke({"question": transcription}) 

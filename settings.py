@@ -40,6 +40,7 @@ class CopilotSettings(BaseSettings):
     AZURE_SPEECH_ENDPOINT: str = "https://www.google.com"
     
     # LLM
+    TOGETHER_API_KEY: str = "wkwkwk1221"
     GCP_PROJECT_ID: str = "test"
     GCP_SERVICE_ACCOUNT: str = "service-account.json"
     GCP_MODEL_NAME: str = "text-bison@002"
