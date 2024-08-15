@@ -70,20 +70,23 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # Serve the index.html file at the root URL
 @app.get("/")  
 def read_root():  
-    return FileResponse("static/index.html")   
-    # return {"Hello": "World"} 
+    return FileResponse("static/index.html")
   
 @app.post("/transcribe")  
 async def transcribe(
+    id: str = Form(...),
     audio: UploadFile = File(...), 
-    stt_model: str = Form(...)
+    stt_model: str = Form(...),
 ):  
     audio_data = await audio.read()
       
     # Convert audio file to required format  
     audio_segment = AudioSegment.from_file(BytesIO(audio_data))  
     audio_segment = audio_segment.set_frame_rate(16000).set_channels(1).set_sample_width(2)
-    audio_data = audio_segment.export(format="wav").read()  
+    audio_data = audio_segment.export(format="wav").read()
+
+    # Estimate the duration of the audio  
+    audio_dur = audio_segment.duration_seconds
       
     if stt_model == "azure":  
         transcript = recognize_using_azure(audio_data)  
@@ -113,10 +116,16 @@ async def transcribe(
         )
         transcript = recognize_using_groq(client, audio_data)  
       
-    return JSONResponse(content={"transcription": transcript})  
+    content = {
+        "id": id,
+        "transcription": transcript,
+        "audio_duration": audio_dur,
+    }
+    return JSONResponse(content=content)  
   
 @app.post("/generate_soap")  
 async def generate_soap(
+    id: str = Form(...),
     transcription: str = Form(...), 
     llm_model: str = Form(...)
 ): 
@@ -145,8 +154,12 @@ async def generate_soap(
         soap_note = response.content
     else:  
         soap_note = response 
-      
-    return JSONResponse(content={"soap_note": soap_note})
+    
+    content = {
+        "id": id,
+        "soap_note": soap_note
+    }
+    return JSONResponse(content=content)
   
 if __name__ == '__main__':  
     import uvicorn  

@@ -23,11 +23,23 @@ document.addEventListener('DOMContentLoaded', () => {
     let final_transcript = '';  
     let audioStream = null;  
   
+    // Function to generate a random alpha-numeric string  
+    const generateRandomId = (length = 10) => {  
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';  
+        let result = '';  
+        for (let i = 0; i < length; i++) {  
+            result += characters.charAt(Math.floor(Math.random() * characters.length));  
+        }  
+        return result;  
+    };
+  
     // Populate language dropdown  
     for (let i = 0; i < langs.length; i++) {  
         selectLanguage.options[i] = new Option(langs[i][0], langs[i][1][0]);  
     }  
     selectLanguage.value = 'id-ID'; // Set default to 'Bahasa Indonesia'  
+
+    const requestId = generateRandomId(); // Generate random ID 
   
     const renderMarkdown = (textarea, preview) => {  
         preview.innerHTML = marked.parse(textarea.value);  
@@ -179,6 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData();  
         formData.append('audio', audioBlob);  
         formData.append('stt_model', sttModel);  
+        formData.append('id', requestId);
         const startTime = performance.now();  
         // Show spinner  
         transcribeSpinner.style.display = 'block';  
@@ -216,6 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData();  
         formData.append('transcription', transcription);  
         formData.append('llm_model', llmModel);  
+        formData.append('id', requestId);
         const startTime = performance.now();  
         // Show spinner  
         soapSpinner.style.display = 'block';  
