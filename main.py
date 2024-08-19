@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, Form  
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.responses import JSONResponse  
 from pydub import AudioSegment  
 from io import BytesIO  
@@ -7,6 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import random
 import string
+import json
+import datetime
 
 from pathlib import Path  
 import vertexai  
@@ -16,10 +18,11 @@ from stt_calls.groq_stt import recognize_using_groq
 from stt_calls.azure_stt import recognize_using_azure
 from stt_calls.vertexai_stt import recognize_using_vertexai, recognize_using_vertexai_via_uri
 from utils.bytes2gcsuri import upload_wav_to_gcs
+from utils.parse_soap import parse_soap_note
 
 from langchain_core.prompts import ChatPromptTemplate  
 from groq import Groq
-from prompts import sys_prompt
+from prompts import sys_prompt, sys_prompt_2
 from settings import CopilotSettings  
 
 from llms.azure_llm import gpt
@@ -130,7 +133,7 @@ async def generate_soap(
     llm_model: str = Form(...)
 ): 
     # SOAP prompt system loading
-    system_message = sys_prompt.system_message
+    system_message = sys_prompt_2.system_message
     prompt = ChatPromptTemplate.from_messages(  
             [  
                 ("system", system_message),  
@@ -159,6 +162,101 @@ async def generate_soap(
         "id": id,
         "soap_note": soap_note
     }
+    return JSONResponse(content=content)
+
+@app.post("/transcribe_and_generate_soap")  
+async def transcribe_and_generate_soap(
+    id: str = Form(...),
+    audio: UploadFile = File(...)
+):  
+    json_data_dir = "json_data/"
+    #### Checking existing id and json files ####
+    if not os.path.exists(json_data_dir):
+        raise HTTPException(status_code=400, detail="JSON directory is not exists!")
+    json_ids = [json_id.replace(".json", "") for json_id in os.listdir(json_data_dir)]
+
+    if id not in json_ids:
+        #### STT Process ####
+        # Validate file extension  
+        allowed_extensions = {"wav", "mp3", "m4a"}  
+        file_extension = audio.filename.split(".")[-1].lower()  
+        if file_extension not in allowed_extensions:  
+            raise HTTPException(status_code=400, detail="Invalid file format. Only .wav, .mp3, and .m4a are allowed.")
+        
+        audio_data = await audio.read()
+        
+        # Convert audio file to required format  
+        audio_segment = AudioSegment.from_file(BytesIO(audio_data))  
+        audio_segment = audio_segment.set_frame_rate(16000).set_channels(1).set_sample_width(2)
+        audio_data = audio_segment.export(format="wav").read()
+
+        # Estimate the duration of the audio  
+        audio_dur = audio_segment.duration_seconds
+
+        # Transcription process
+        client = Groq(
+            api_key=config.GROQ_API_KEY,
+        )
+        transcript = recognize_using_groq(client, audio_data)
+
+        #### SOAP Generation ####
+        # SOAP prompt system loading
+        system_message = sys_prompt_2.system_message
+        prompt = ChatPromptTemplate.from_messages(  
+                [  
+                    ("system", system_message),  
+                    ("human", "{question}"),  
+                ]
+            )
+        llm = groq(model="gemma2-9b-it")
+        chain = prompt | llm
+        response = chain.invoke({"question": transcript}) 
+        if not isinstance(response, str):  
+            soap_note = response.content
+        else:  
+            soap_note = response
+
+        # Parse the response into JSON format
+        try:
+            soap_note_dict = parse_soap_note(soap_note)
+        except Exception as e:
+            print(f"Error parsing SOAP note: {str(e)}")
+            content = {
+                "error": f"Error parsing SOAP note: {str(e)}",
+                "id": id,
+                "raw_soap_note": soap_note,
+                "datetime": str(datetime.datetime.now()),
+            }
+            return JSONResponse(content=content)
+        
+        if "error" in soap_note_dict:
+            content = {
+                "error": soap_note_dict["error"],
+                "id": id,
+                "raw_soap_note": soap_note,
+                "datetime": str(datetime.datetime.now()),
+            }
+            return JSONResponse(content=content)
+
+        content = {
+            "id": id,
+            "datetime": str(datetime.datetime.now()),
+            "audio_duration": audio_dur,
+            "transcript": transcript,
+            "raw_soap_note": soap_note,
+            "json_soap_note": soap_note_dict
+        }
+
+        json_data_path = os.path.join(json_data_dir, f"{id}.json")
+        with open(json_data_path, 'w') as f:
+            json.dump(content, f)
+
+    else:
+        # JSON file with specific ID exists, hence read its content
+        json_data_path = os.path.join(json_data_dir, f"{id}.json")
+        with open(json_data_path, 'r') as f:
+            content = json.load(f)
+
     return JSONResponse(content=content)
   
 if __name__ == '__main__':  
