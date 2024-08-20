@@ -168,6 +168,7 @@ async def generate_soap(
 @app.post("/transcribe_and_generate_soap")  
 async def transcribe_and_generate_soap(
     id: str = Form(...),
+    lang_id: str = Form(...),
     audio: UploadFile = File(...)
 ):  
     json_data_dir = "json_data/"
@@ -198,7 +199,11 @@ async def transcribe_and_generate_soap(
         client = Groq(
             api_key=config.GROQ_API_KEY,
         )
-        transcript = recognize_using_groq(client, audio_data)
+        transcript = recognize_using_groq(
+            client, 
+            audio_data,
+            lang_id
+        )
 
         #### SOAP Generation ####
         # SOAP prompt system loading
@@ -228,8 +233,7 @@ async def transcribe_and_generate_soap(
             metadata['token_usage']['total_tokens'], # token_total  
             transcript, # transcript  
             soap_note   # llm_response  
-        )
-        
+        )      
         connect_and_insert(
             database=config.POSTGRES_DB, 
             user=config.POSTGRES_USER, 
