@@ -1,8 +1,18 @@
 from sqlalchemy import create_engine, Column, Integer, String, Float, MetaData, Table, inspect  
 from sqlalchemy.orm import sessionmaker  
-from sqlalchemy.exc import SQLAlchemyError  
-  
-def connect_and_insert(database, user, password, host, port, row_data):  
+from sqlalchemy.exc import SQLAlchemyError
+
+from fastapi import HTTPException
+from loguru import logger
+
+def connect_and_insert(
+        database, 
+        user, 
+        password, 
+        host, 
+        port, 
+        row_data
+    ):  
     # Create an engine and connect to the PostgreSQL database  
     engine = create_engine(f'postgresql+psycopg2://{user}:{password}@{host}:{port}/{database}')  
       
@@ -25,9 +35,11 @@ def connect_and_insert(database, user, password, host, port, row_data):
     inspector = inspect(engine)  
     if not inspector.has_table('soap_stt'):  
         metadata.create_all(engine)  
-        print("Table soap_stt created.")  
+        logger.info("Table soap_stt created.")  
     else:  
-        print("Table soap_stt already exists.")  
+        logger.info("Table soap_stt already exists.")
+
+    logger.info("Connection to database established.")
       
     # Create a session  
     Session = sessionmaker(bind=engine)  
@@ -46,9 +58,13 @@ def connect_and_insert(database, user, password, host, port, row_data):
         )  
         session.execute(insert_stmt)  
         session.commit()  
-        print("Data inserted.")  
+        logger.info("Data inserted.")  
     except SQLAlchemyError as e:  
         session.rollback()  
-        print(f"Error occurred: {e}")  
+        logger.error(f"Error occurred: {e}")
+        raise HTTPException(
+            status_code=420, 
+            detail="Error occurred while inserting data."
+        )
     finally:  
         session.close() 

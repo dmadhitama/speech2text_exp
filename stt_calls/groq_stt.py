@@ -1,4 +1,5 @@
 import tempfile
+from loguru import logger
 
 def recognize_using_groq(
         client,
@@ -19,7 +20,7 @@ def recognize_using_groq(
         language=language,  # Optional
         temperature=0.0  # Optional
     )
-    print("Result:")
-    print(transcription.text)
+    logger.debug("Result:")
+    logger.debug(transcription.text)
 
     return transcription.text

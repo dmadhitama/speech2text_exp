@@ -1,15 +1,16 @@
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.responses import JSONResponse  
-from pydub import AudioSegment  
-from io import BytesIO  
 from fastapi.middleware.cors import CORSMiddleware  
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse 
 
 import os
 import random
 import string
 import json
 import datetime
-
+from pydub import AudioSegment  
+from io import BytesIO  
 from pathlib import Path  
 import vertexai  
 from google.cloud import aiplatform  
@@ -31,6 +32,7 @@ from llms.groq_llm import groq
 from llms.together_llm import together
 from database.db import connect_and_insert
 
+from loguru import logger
 
 config = CopilotSettings()
 app = FastAPI()  
@@ -52,24 +54,22 @@ async def startup_event():
     PROJECT_ID = 'dwh-siloam'  
     REGION = 'asia-southeast1'  
       
-    print(f"Project ID: {PROJECT_ID}\nRegion: {REGION}")  
-    print(f"Checking Credentials...")  
+    logger.info(f"Project ID: {PROJECT_ID}\nRegion: {REGION}")  
+    logger.info(f"Checking Credentials...")  
   
     if not any((Path.cwd()/"service_account").glob('*.json')):  
-        print("Service account folder is empty. Fallback using default gcloud account")  
+        logger.warning("Service account folder is empty. Fallback using default gcloud account")  
         aiplatform.init(project=PROJECT_ID, location=REGION)  
         vertexai.init(project=PROJECT_ID, location=REGION)  
     else:  
-        print('Using service account credentials from service_account folder')  
+        logger.info('Using service account credentials from service_account folder')  
         from google.oauth2 import service_account
         sa_file = list((Path.cwd()/"service_account").glob('*.json'))[0]  
-        print(f"Using service account file: {sa_file}")  
+        logger.info(f"Using service account file: {sa_file}")  
         credentials = service_account.Credentials.from_service_account_file(sa_file)  
         aiplatform.init(project=PROJECT_ID, location=REGION, credentials=credentials)  
         vertexai.init(project=PROJECT_ID, location=REGION, credentials=credentials)
 
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 # Serve the index.html file at the root URL
 @app.get("/")  
@@ -104,7 +104,7 @@ async def transcribe(
         bucket_name = 'stt-poc-demo'
         wavname = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16))
         destination_blob_name = f'audio_files/{wavname}.wav'  # Unique filename for the blob
-        print("Uploading file to bucket...")
+        logger.info("Uploading file to bucket...")
         gcs_uri = upload_wav_to_gcs(
             audio_data, 
             audio_segment.frame_rate, 
@@ -112,7 +112,7 @@ async def transcribe(
             bucket_name, 
             destination_blob_name
         )
-        print("File uploaded to bucket!")
+        logger.info("File uploaded to bucket!")
         transcript = recognize_using_vertexai_via_uri(gcs_uri)  
     elif stt_model == "groq":
         client = Groq(
@@ -174,26 +174,49 @@ async def transcribe_and_generate_soap(
     json_data_dir = "json_data/"
     #### Checking existing id and json files ####
     if not os.path.exists(json_data_dir):
-        raise HTTPException(status_code=400, detail="JSON directory is not exists!")
+        logger.error("JSON directory is not exists!")
+        raise HTTPException(
+            status_code=490, 
+            detail="JSON directory is not exists!"
+        )
+    
     json_ids = [json_id.replace(".json", "") for json_id in os.listdir(json_data_dir)]
 
     if id not in json_ids:
         #### STT Process ####
         # Validate file extension  
-        allowed_extensions = {"wav", "mp3", "m4a"}  
+        allowed_extensions = {"wav", "mp3"}  
         file_extension = audio.filename.split(".")[-1].lower()  
-        if file_extension not in allowed_extensions:  
-            raise HTTPException(status_code=400, detail="Invalid file format. Only .wav, .mp3, and .m4a are allowed.")
+        if file_extension not in allowed_extensions:
+            logger.error("Invalid file format. Only .wav & .mp3 are allowed.")
+            raise HTTPException(
+                status_code=410, 
+                detail="Invalid file format. Only .wav & .mp3 are allowed."
+            )
         
         audio_data = await audio.read()
         
         # Convert audio file to required format  
         audio_segment = AudioSegment.from_file(BytesIO(audio_data))  
         audio_segment = audio_segment.set_frame_rate(16000).set_channels(1).set_sample_width(2)
-        audio_data = audio_segment.export(format="wav").read()
+        audio_data = audio_segment.export(format=file_extension).read()
 
         # Estimate the duration of the audio  
         audio_dur = audio_segment.duration_seconds
+
+        # Error response for under length or over length audio duration
+        if audio_dur < 5:
+            logger.error("Audio duration is less than 5 seconds.")
+            raise HTTPException(
+                status_code=411, 
+                detail="Audio duration is less than 5 seconds."
+            )
+        if audio_dur > 600:
+            logger.error("Audio duration is over 10 minutes.")
+            raise HTTPException(
+                status_code=412, 
+                detail="Audio duration is over 10 minutes."
+            )
 
         # Transcription process
         client = Groq(
@@ -220,7 +243,6 @@ async def transcribe_and_generate_soap(
         if not isinstance(response, str):  
             soap_note = response.content
             metadata = response.response_metadata
-            print(metadata)
         else:  
             soap_note = response
 
@@ -247,23 +269,12 @@ async def transcribe_and_generate_soap(
         try:
             soap_note_dict = parse_soap_note(soap_note)
         except Exception as e:
-            print(f"Error parsing SOAP note: {str(e)}")
-            content = {
-                "error": f"Error parsing SOAP note: {str(e)}",
-                "id": id,
-                "raw_soap_note": soap_note,
-                "datetime": str(datetime.datetime.now()),
-            }
-            return JSONResponse(content=content)
-        
-        if "error" in soap_note_dict:
-            content = {
-                "error": soap_note_dict["error"],
-                "id": id,
-                "raw_soap_note": soap_note,
-                "datetime": str(datetime.datetime.now()),
-            }
-            return JSONResponse(content=content)
+            logger.error("Error parsing SOAP note:")
+            logger.error(f"{str(e)}")
+            raise HTTPException(
+                status_code=401, 
+                detail=f"Error parsing SOAP note: {str(e)}"
+            )
 
         content = {
             "id": id,
