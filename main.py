@@ -29,6 +29,7 @@ from llms.azure_llm import gpt
 from llms.vertexai_llm import gemini
 from llms.groq_llm import groq
 from llms.together_llm import together
+from database.db import connect_and_insert
 
 
 config = CopilotSettings()
@@ -213,8 +214,30 @@ async def transcribe_and_generate_soap(
         response = chain.invoke({"question": transcript}) 
         if not isinstance(response, str):  
             soap_note = response.content
+            metadata = response.response_metadata
+            print(metadata)
         else:  
             soap_note = response
+
+        # Save metadata information to database
+        row_data = (  
+            str(datetime.datetime.now()),  # datetime  
+            audio_dur,                  # audio_duration  
+            metadata['token_usage']['prompt_tokens'], # token_prompt  
+            metadata['token_usage']['completion_tokens'], # token_completion  
+            metadata['token_usage']['total_tokens'], # token_total  
+            transcript, # transcript  
+            soap_note   # llm_response  
+        )
+        
+        connect_and_insert(
+            database=config.POSTGRES_DB, 
+            user=config.POSTGRES_USER, 
+            password=config.POSTGRES_PASSWORD, 
+            host=config.POSTGRES_HOST, 
+            port=config.POSTGRES_PORT,
+            row_data=row_data
+        )
 
         # Parse the response into JSON format
         try:

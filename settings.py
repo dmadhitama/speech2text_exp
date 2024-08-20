@@ -77,7 +77,7 @@ class CopilotSettings(BaseSettings):
     POSTGRES_USER: str = "testuser"
     POSTGRES_PASSWORD: str = "testpwd"
     POSTGRES_HOST: str = "localhost"
-    POSTGRES_DB: str = "copilot_db"
+    POSTGRES_DB: str = "testdb"
     POSTGRES_PORT: int = 5432
 
     # Data

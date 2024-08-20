@@ -21,7 +21,7 @@ Here are some boundaries for you to remember:
 - Do not fabricate any information. If you are unsure about something, simply do not add any additional information.
 - The transcripts might be in Indonesian, and you should generate the SOAP notes in Indonesian. 
 - Do not include ICD-10 Codes information in the SOAP notes.
-- Do not translate these Subjective, Objective, Assessment, & Plan title sections to Indonesian languages.
+- Do not translate these Subjective, Objective, Assessment, & Plan title sections to Indonesian languages. For example, "Subjektif, Objektif, Penilaian, & Rencana"
 - Always respond or provide feedback in Indonesian!
 
 EXAMPLE:

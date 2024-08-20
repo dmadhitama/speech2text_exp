@@ -8,7 +8,7 @@ def parse_soap_note(text):
           
         start_index = text.find(start_marker)  
         if start_index == -1:  
-            return {"error": f"Missing section: {section.capitalize()}"}  
+            return {"error": f"Missing section: {section.capitalize()}. It might be caused by non-medical content or information in your audio recording."}  
           
         start_index += len(start_marker)  
         end_index = text.find(end_marker) if end_marker else len(text)  

@@ -1,0 +1,18 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgres:latest
+    user: postgres
+    environment:
+     - POSTGRES_PASSWORD=stt-soap-password
+     - POSTGRES_USER=stt-soap-user
+     - POSTGRES_DB=stt-soap-db
+    ports:
+      - "5434:5432"
+    volumes:
+      - volume_db_sttsoap:/var/lib/postgresql/data
+
+volumes:
+  volume_db_sttsoap:
+    name: volume_db_sttsoap
