@@ -1,4 +1,5 @@
 from google.cloud import speech
+from loguru import logger
 
 def recognize_using_vertexai(
     # speech_file: str,
@@ -27,9 +28,9 @@ def recognize_using_vertexai(
     full_results = []
     for i, result in enumerate(response.results):
         alternative = result.alternatives[0]
-        print("-" * 20)
-        print(f"First alternative of result {i}")
-        print(f"Transcript: {alternative.transcript}")
+        logger.debug("-" * 20)
+        logger.debug(f"First alternative of result {i}")
+        logger.debug(f"Transcript: {alternative.transcript}")
         full_results.append(alternative.transcript)
 
     return ". ".join(full_results)
@@ -64,7 +65,7 @@ def recognize_using_vertexai_via_uri(
 
     operation = client.long_running_recognize(config=config, audio=audio)
 
-    print("Waiting for operation to complete...")
+    logger.info("Waiting for operation to complete...")
     response = operation.result(timeout=90)
 
     transcript_builder = []
@@ -78,6 +79,6 @@ def recognize_using_vertexai_via_uri(
         results.append(result.alternatives[0].transcript)
 
     transcript = "".join(transcript_builder)
-    print(transcript)
+    logger.debug(transcript)
 
     return '. '.join(results)

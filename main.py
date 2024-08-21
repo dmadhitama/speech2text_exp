@@ -50,9 +50,9 @@ app.add_middleware(
 @app.on_event("startup")  
 async def startup_event():  
     # Initialize Vertex AI  
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "service_account/dwh-siloam-99402e61edd2.json"  
-    PROJECT_ID = 'dwh-siloam'  
-    REGION = 'asia-southeast1'  
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config.GCP_SERVICE_ACCOUNT
+    PROJECT_ID = config.GCP_PROJECT_ID 
+    REGION = config.GCP_VERTEXAI_REGION 
       
     logger.info(f"Project ID: {PROJECT_ID}\nRegion: {REGION}")  
     logger.info(f"Checking Credentials...")  
@@ -273,6 +273,7 @@ async def transcribe_and_generate_soap(
             transcript, # transcript  
             soap_note # llm_response  
         )
+
         try:
             connect_and_insert(
                 database=config.POSTGRES_DB, 

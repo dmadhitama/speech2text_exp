@@ -15,7 +15,7 @@ def parse_soap_note(text):
         if start_index == -1:
             logger.info(f"Missing section: {section.capitalize()}. It might be caused by non-medical content or information in your audio recording.")
             raise HTTPException(
-                status_code=401, 
+                status_code=422, 
                 detail=f"Missing section: {section.capitalize()}. It might be caused by non-medical content or information in your audio recording."
             )
             # return {"error": f"Missing section: {section.capitalize()}. It might be caused by non-medical content or information in your audio recording."}  
