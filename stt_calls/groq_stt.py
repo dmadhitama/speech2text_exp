@@ -1,5 +1,6 @@
 import tempfile
 from loguru import logger
+from fastapi import HTTPException
 
 def recognize_using_groq(
         client,

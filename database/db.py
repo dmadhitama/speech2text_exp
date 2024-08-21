@@ -62,9 +62,9 @@ def connect_and_insert(
     except SQLAlchemyError as e:  
         session.rollback()  
         logger.error(f"Error occurred: {e}")
-        raise HTTPException(
-            status_code=420, 
-            detail="Error occurred while inserting data."
-        )
+        # raise HTTPException(
+        #     status_code=420, 
+        #     detail="Error occurred while inserting data."
+        # )
     finally:  
         session.close() 

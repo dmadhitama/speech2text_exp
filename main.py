@@ -151,7 +151,7 @@ async def generate_soap(
         llm = groq(model="llama3-70b-8192")
     elif llm_model == "together_exp":
         llm = together()
-      
+    
     chain = prompt | llm
     response = chain.invoke({"question": transcription}) 
     if not isinstance(response, str):  
@@ -175,10 +175,9 @@ async def transcribe_and_generate_soap(
     #### Checking existing id and json files ####
     if not os.path.exists(json_data_dir):
         logger.error("JSON directory is not exists!")
-        raise HTTPException(
-            status_code=490, 
-            detail="JSON directory is not exists!"
-        )
+        logger.info("Creating new JSON directory...")
+        os.makedirs(json_data_dir)
+        logger.info("New JSON directory created!")
     
     json_ids = [json_id.replace(".json", "") for json_id in os.listdir(json_data_dir)]
 
@@ -190,8 +189,8 @@ async def transcribe_and_generate_soap(
         if file_extension not in allowed_extensions:
             logger.error("Invalid file format. Only .wav & .mp3 are allowed.")
             raise HTTPException(
-                status_code=410, 
-                detail="Invalid file format. Only .wav & .mp3 are allowed."
+                status_code=415,
+                detail="Invalid audio file format. Only .wav & .mp3 are allowed."
             )
         
         audio_data = await audio.read()
@@ -208,25 +207,33 @@ async def transcribe_and_generate_soap(
         if audio_dur < 5:
             logger.error("Audio duration is less than 5 seconds.")
             raise HTTPException(
-                status_code=411, 
+                status_code=417, 
                 detail="Audio duration is less than 5 seconds."
             )
         if audio_dur > 600:
             logger.error("Audio duration is over 10 minutes.")
             raise HTTPException(
-                status_code=412, 
+                status_code=417, 
                 detail="Audio duration is over 10 minutes."
             )
 
         # Transcription process
-        client = Groq(
-            api_key=config.GROQ_API_KEY,
-        )
-        transcript = recognize_using_groq(
-            client, 
-            audio_data,
-            lang_id
-        )
+        try:
+            client = Groq(
+                api_key=config.GROQ_API_KEY,
+            )
+            transcript = recognize_using_groq(
+                client, 
+                audio_data,
+                lang_id
+            )
+        except Exception as e:
+            logger.error("Error while transcribing audio:")
+            logger.error(f"{str(e)}")
+            raise HTTPException(
+                status_code=500, 
+                detail="Error while transcribing audio."
+            )
 
         #### SOAP Generation ####
         # SOAP prompt system loading
@@ -239,7 +246,17 @@ async def transcribe_and_generate_soap(
             )
         llm = groq(model="gemma2-9b-it")
         chain = prompt | llm
-        response = chain.invoke({"question": transcript}) 
+        
+        try:
+            response = chain.invoke({"question": transcript})
+        except Exception as e:
+            logger.error("Error while generating SOAP note:")
+            logger.error(f"{str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail="Error while generating SOAP note."
+            )
+        
         if not isinstance(response, str):  
             soap_note = response.content
             metadata = response.response_metadata
@@ -249,21 +266,25 @@ async def transcribe_and_generate_soap(
         # Save metadata information to database
         row_data = (  
             str(datetime.datetime.now()),  # datetime  
-            audio_dur,                  # audio_duration  
+            audio_dur, # audio_duration  
             metadata['token_usage']['prompt_tokens'], # token_prompt  
             metadata['token_usage']['completion_tokens'], # token_completion  
             metadata['token_usage']['total_tokens'], # token_total  
             transcript, # transcript  
-            soap_note   # llm_response  
-        )      
-        connect_and_insert(
-            database=config.POSTGRES_DB, 
-            user=config.POSTGRES_USER, 
-            password=config.POSTGRES_PASSWORD, 
-            host=config.POSTGRES_HOST, 
-            port=config.POSTGRES_PORT,
-            row_data=row_data
+            soap_note # llm_response  
         )
+        try:
+            connect_and_insert(
+                database=config.POSTGRES_DB, 
+                user=config.POSTGRES_USER, 
+                password=config.POSTGRES_PASSWORD, 
+                host=config.POSTGRES_HOST, 
+                port=config.POSTGRES_PORT,
+                row_data=row_data
+            )
+        except Exception as e:
+            logger.error("Error saving metadata information to database:")
+            logger.error(f"{str(e)}")
 
         # Parse the response into JSON format
         try:
@@ -272,7 +293,7 @@ async def transcribe_and_generate_soap(
             logger.error("Error parsing SOAP note:")
             logger.error(f"{str(e)}")
             raise HTTPException(
-                status_code=401, 
+                status_code=422, 
                 detail=f"Error parsing SOAP note: {str(e)}"
             )
 
