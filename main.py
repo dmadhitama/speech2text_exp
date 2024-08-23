@@ -14,16 +14,23 @@ from io import BytesIO
 from pathlib import Path  
 import vertexai  
 from google.cloud import aiplatform  
+from typing import Optional  
 
 from stt_calls.groq_stt import recognize_using_groq
 from stt_calls.azure_stt import recognize_using_azure
 from stt_calls.vertexai_stt import recognize_using_vertexai, recognize_using_vertexai_via_uri
 from utils.bytes2gcsuri import upload_wav_to_gcs
 from utils.parse_soap import parse_soap_note
+from utils.gdrive import read_audio_from_google_drive
+from utils.helper import get_file_extension_from_mime
 
 from langchain_core.prompts import ChatPromptTemplate  
 from groq import Groq
-from prompts import sys_prompt, sys_prompt_2
+from prompts import (
+    sys_prompt, 
+    sys_prompt_2,
+    sys_prompt_mod,
+)
 from settings import CopilotSettings  
 
 from llms.azure_llm import gpt
@@ -33,6 +40,16 @@ from llms.together_llm import together
 from database.db import connect_and_insert
 
 from loguru import logger
+import sys
+import ssl
+import base64
+import requests
+import magic
+
+log_level = "DEBUG"
+log_format = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS zz}</green> | <level>{level: <8}</level> | <yellow>Line {line: >4} ({file}):</yellow> <b>{message}</b>"
+logger.add(sys.stderr, level=log_level, format=log_format, colorize=True, backtrace=True, diagnose=True)
+logger.add("logs.log", level=log_level, format=log_format, colorize=False, backtrace=True, diagnose=True)
 
 config = CopilotSettings()
 app = FastAPI()  
@@ -134,7 +151,7 @@ async def generate_soap(
     llm_model: str = Form(...)
 ): 
     # SOAP prompt system loading
-    system_message = sys_prompt_2.system_message
+    system_message = sys_prompt_mod.system_message
     prompt = ChatPromptTemplate.from_messages(  
             [  
                 ("system", system_message),  
@@ -169,7 +186,9 @@ async def generate_soap(
 async def transcribe_and_generate_soap(
     id: str = Form(...),
     lang_id: str = Form(...),
-    audio: UploadFile = File(...)
+    audio: Optional[UploadFile] = File(None),  
+    base64_audio: Optional[str] = Form(None),  
+    google_drive_url: Optional[str] = Form(None)
 ):  
     json_data_dir = "json_data/"
     #### Checking existing id and json files ####
@@ -183,17 +202,60 @@ async def transcribe_and_generate_soap(
 
     if id not in json_ids:
         #### STT Process ####
-        # Validate file extension  
-        allowed_extensions = {"wav", "mp3"}  
-        file_extension = audio.filename.split(".")[-1].lower()  
-        if file_extension not in allowed_extensions:
-            logger.error("Invalid file format. Only .wav & .mp3 are allowed.")
-            raise HTTPException(
-                status_code=415,
-                detail="Invalid audio file format. Only .wav & .mp3 are allowed."
+        # Validate and read audio data  
+        audio_data = None  
+        file_extension = None  
+          
+        if audio:  
+            file_extension = audio.filename.split(".")[-1].lower()  
+            audio_data = await audio.read()  
+         
+        elif base64_audio:  
+            try:  
+                audio_data = base64.b64decode(base64_audio)  
+                mime = magic.Magic(mime=True)  
+                mime_type = mime.from_buffer(audio_data)  
+                logger.info(f"Detected MIME type: {mime_type}")  
+                file_extension = get_file_extension_from_mime(mime_type)  
+                if not file_extension:  
+                    logger.error(f"Unsupported audio file extension. File format: {file_extension} found.")
+                    raise HTTPException(
+                        status_code=415,
+                        detail="Invalid audio file format. Only .wav & .mp3 are allowed."
+                    )
+            except Exception as e:  
+                logger.error("Invalid base64 audio data.")
+                logger.error(f"{str(e)}")
+                raise HTTPException(  
+                    status_code=400,  
+                    detail="Invalid base64 audio data."  
+                ) 
+            
+        elif google_drive_url:  
+            try:
+                audio_data, file_extension = read_audio_from_google_drive(google_drive_url) 
+            except Exception as e:  
+                logger.error("Error downloading audio from Google Drive.") 
+                logger.error(f"{str(e)}") 
+                raise HTTPException(  
+                    status_code=400,  
+                    detail="Error downloading audio from Google Drive."  
+                )  
+            
+        else:  
+            raise HTTPException(  
+                status_code=400,  
+                detail="No valid audio input provided."  
             )
         
-        audio_data = await audio.read()
+        # Validate file extension  
+        allowed_extensions = {"wav", "mp3"}  
+        if file_extension not in allowed_extensions:  
+            logger.error("Invalid file format. Only .wav & .mp3 are allowed.")  
+            raise HTTPException(  
+                status_code=415,  
+                detail="Invalid audio file format. Only .wav & .mp3 are allowed."  
+            ) 
         
         # Convert audio file to required format  
         audio_segment = AudioSegment.from_file(BytesIO(audio_data))  
@@ -237,13 +299,15 @@ async def transcribe_and_generate_soap(
 
         #### SOAP Generation ####
         # SOAP prompt system loading
-        system_message = sys_prompt_2.system_message
+        system_message = sys_prompt.system_message
         prompt = ChatPromptTemplate.from_messages(  
                 [  
                     ("system", system_message),  
                     ("human", "{question}"),  
                 ]
             )
+        # groq available models
+        # "llama3-70b-8192", "gemma2-9b-it"
         llm = groq(model="gemma2-9b-it")
         chain = prompt | llm
         
