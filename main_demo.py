@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request
 from fastapi.responses import JSONResponse  
 from fastapi.middleware.cors import CORSMiddleware  
 from typing import Optional  
@@ -58,7 +58,6 @@ app.add_middleware(
     allow_headers=["*"],  # Allow all headers  
 )
 
-from fastapi import Request
 @app.post("/soap_demo")  
 async def soap_demo(   
     request: Request, 

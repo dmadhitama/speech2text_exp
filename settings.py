@@ -19,6 +19,11 @@ class CopilotSettings(BaseSettings):
 
     ENV: str = "DEV"
 
+    LOG_PATH: str = "logs.log"
+
+    # FAL.AI
+    FAL_KEY: str = "adadads34234234kokokokok"
+
     # API
     API_CHAT_NAME: str = "Copilot Chat API"
     API_CHAT_DESCRIPTION: str = "API for Copilot Chat"

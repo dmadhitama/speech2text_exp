@@ -28,6 +28,7 @@ from utils.helper import (
     get_file_extension_from_mime,
     check_audio_duration
 )
+from llms.fal_diarization import recognize_diarization_fal
 
 from langchain_core.prompts import ChatPromptTemplate  
 from groq import Groq
@@ -103,6 +104,7 @@ async def transcribe(
     id: str = Form(...),
     audio: UploadFile = File(...), 
     stt_model: str = Form(...),
+    diarization: bool = Form(False)
 ):  
     audio_data = await audio.read()
       
@@ -114,33 +116,37 @@ async def transcribe(
     # Estimate the duration of the audio  
     audio_dur = audio_segment.duration_seconds
       
-    if stt_model == "azure":  
-        transcript = recognize_using_azure(audio_data)  
-    elif stt_model == "vertex":  
-        transcript = recognize_using_vertexai(
-            audio_data,
-            sample_rate=audio_segment.frame_rate,
-            num_channels=audio_segment.channels,
-        )
-    elif stt_model == "vertex_cloud":
-        bucket_name = 'stt-poc-demo'
-        wavname = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16))
-        destination_blob_name = f'audio_files/{wavname}.wav'  # Unique filename for the blob
-        logger.info("Uploading file to bucket...")
-        gcs_uri = upload_wav_to_gcs(
-            audio_data, 
-            audio_segment.frame_rate, 
-            audio_segment.channels, 
-            bucket_name, 
-            destination_blob_name
-        )
-        logger.info("File uploaded to bucket!")
-        transcript = recognize_using_vertexai_via_uri(gcs_uri)  
-    elif stt_model == "groq":
-        client = Groq(
-            api_key=config.GROQ_API_KEY,
-        )
-        transcript = recognize_using_groq(client, audio_data)  
+    if diarization:
+        transcript = recognize_diarization_fal(audio_data)
+
+    else:
+        if stt_model == "azure":  
+            transcript = recognize_using_azure(audio_data)  
+        elif stt_model == "vertex":  
+            transcript = recognize_using_vertexai(
+                audio_data,
+                sample_rate=audio_segment.frame_rate,
+                num_channels=audio_segment.channels,
+            )
+        elif stt_model == "vertex_cloud":
+            bucket_name = 'stt-poc-demo'
+            wavname = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16))
+            destination_blob_name = f'audio_files/{wavname}.wav'  # Unique filename for the blob
+            logger.info("Uploading file to bucket...")
+            gcs_uri = upload_wav_to_gcs(
+                audio_data, 
+                audio_segment.frame_rate, 
+                audio_segment.channels, 
+                bucket_name, 
+                destination_blob_name
+            )
+            logger.info("File uploaded to bucket!")
+            transcript = recognize_using_vertexai_via_uri(gcs_uri)  
+        elif stt_model == "groq":
+            client = Groq(
+                api_key=config.GROQ_API_KEY,
+            )
+            transcript = recognize_using_groq(client, audio_data)  
       
     content = {
         "id": id,

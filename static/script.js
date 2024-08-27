@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const advancedModeCheckbox = document.getElementById('advancedMode');  
     const advancedOptions = document.querySelectorAll('.advanced-option');  
     const selectLanguage = document.getElementById('select_language');  
+    const diarizationCheckbox = document.getElementById('diarizationMode'); 
     let audioBlob = null;  
     let mediaRecorder = null;  
     let isRecording = false;  
@@ -186,12 +187,14 @@ document.addEventListener('DOMContentLoaded', () => {
     transcribeButton.addEventListener('click', () => {  
         console.log('Transcribe button clicked');  
         const patientName = document.getElementById('patientName').value;  
-        const sttModel = document.getElementById('sttModel').value;  
+        const sttModel = document.getElementById('sttModel').value;   
+        const diarization = diarizationCheckbox.checked;
         // Create FormData to send audio file to the backend  
         const formData = new FormData();  
         formData.append('audio', audioBlob);  
         formData.append('stt_model', sttModel);  
         formData.append('id', requestId);
+        formData.append('diarization', diarization);
         const startTime = performance.now();  
         // Show spinner  
         transcribeSpinner.style.display = 'block';  

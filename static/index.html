@@ -120,6 +120,9 @@
         .advanced-mode-container {  
             margin-bottom: 20px;  
         }  
+        .diarization-mode-container {  
+            margin-bottom: 20px;  
+        }  
     </style>  
 </head>  
 <body>  
@@ -129,6 +132,10 @@
             <div class="form-group">  
                 <label for="patientName">Patient Name:</label>  
                 <input type="text" id="patientName" name="patientName">  
+            </div>  
+            <div class="diarization-mode-container">  
+                <input type="checkbox" id="diarizationMode" name="diarizationMode" checked>  
+                <label for="diarizationMode">Diarization mode</label>  
             </div>  
             <div class="form-group">  
                 <button id="transcribe">  
