@@ -69,56 +69,104 @@ async def soap_demo(
       
     #### Checking existing id and json files ####  
     if not json_handler.json_exists():
-        # STT Process 
-        audio_processor = AudioProcessor(
-            logger=logger,
-            audio=audio,
-            base64_audio=base64_audio,
-            google_drive_url=google_drive_url,
-            s3_uri=s3_uri,
-            aws_access_key_id=aws_access_key_id,
-            aws_secret_access_key=aws_secret_access_key
-        )
-        await audio_processor.process_audio()
+        try:
+            metadata_saver = None
+            content = {}
+            error_occurred = False
+            status_code = None
+
+            # STT Process 
+            audio_processor = AudioProcessor(
+                logger=logger,
+                audio=audio,
+                base64_audio=base64_audio,
+                google_drive_url=google_drive_url,
+                s3_uri=s3_uri,
+                aws_access_key_id=aws_access_key_id,
+                aws_secret_access_key=aws_secret_access_key
+            )
+            await audio_processor.process_audio()
   
-        try:  
-            client = Groq(api_key=config.GROQ_API_KEY)  
-            transcript = recognize_using_groq(
-                client, 
-                audio_processor.audio_data, 
-                lang_id
-            )  
-        except Exception as e:  
-            logger.error(f"Error while transcribing audio: {str(e)}")
-            raise HTTPException(
-                status_code=500, 
-                detail="Error while transcribing audio."
-            )  
+            try:
+                client = Groq(api_key=config.GROQ_API_KEY)  
+                transcript = recognize_using_groq(
+                    client, 
+                    audio_processor.audio_data, 
+                    lang_id
+                )  
+                # Save STT metadata to metadata_saver
+                metadata_saver = MetadataSaver(
+                    audio_duration=audio_processor.audio_duration, 
+                    transcript=transcript
+                )
+            except Exception as e:  
+                logger.error(f"Error while transcribing audio: {str(e)}")
+                raise HTTPException(
+                    status_code=500, 
+                    detail="Error while transcribing audio."
+                )  
         
-        # SOAP Generating Process
-        transcript2soap = Transcript2SOAP(transcript)
-        # transcript2soap.generate_soap()
-        transcript2soap.generate_soap_with_structured_output_parser() # TBD - NEXT FIX
-  
-        metadata_saver = MetadataSaver(
-            audio_processor.audio_duration, 
-            transcript2soap.metadata, 
-            transcript, 
-            transcript2soap.soap_note
-        )  
-        metadata_saver.save_metadata()  
-  
-        soap_note_dict = transcript2soap.parse_soap()  
-  
-        content = {  
-            "id": id,  
-            "datetime": str(convert_time_to_gmt7(datetime.datetime.now())),  
-            "audio_duration": audio_processor.audio_duration,  
-            "transcript": transcript,  
-            "raw_soap_note": transcript2soap.soap_note,  
-            "json_soap_note": soap_note_dict  
-        }  
-        json_handler.save_json(content) 
+            # SOAP Generating Process
+            transcript2soap = Transcript2SOAP(
+                transcript=transcript,
+                model=config.GROQ_MODEL
+            )
+            structured_output_parser = True
+            if not structured_output_parser:
+                transcript2soap.generate_soap()    
+                soap_note_dict = transcript2soap.parse_soap()  
+            else:
+                transcript2soap.generate_soap_with_structured_output_parser() # TBD - NEXT FIX
+                soap_note_dict = transcript2soap.response
+
+            # Save remaining metadata after SOAP generation
+            metadata_saver.update_metadata(transcript2soap.metadata)
+            metadata_saver.update_soap_note(transcript2soap.soap_note)
+    
+            content = {  
+                "id": id,  
+                "datetime": str(convert_time_to_gmt7(datetime.datetime.now())),  
+                "audio_duration": audio_processor.audio_duration,  
+                "transcript": transcript,  
+                "raw_soap_note": transcript2soap.soap_note,  
+                "json_soap_note": soap_note_dict  
+            }  
+
+        except HTTPException as http_exc:
+            logger.error(f"HTTP error during processing: {str(http_exc)}")
+            error_occurred = True
+            status_code = http_exc.status_code
+            content = {
+                "id": id,
+                "datetime": str(convert_time_to_gmt7(datetime.datetime.now())),
+                "audio_duration": getattr(audio_processor, 'audio_duration', None),
+                "error": str(http_exc.detail)
+            }
+            
+        except Exception as e:
+            error_occurred = True
+            logger.error(f"Error during processing: {str(e)}")
+            content = {
+                "id": id,
+                "datetime": str(convert_time_to_gmt7(datetime.datetime.now())),
+                "audio_duration": getattr(audio_processor, 'audio_duration', None),
+                "error": f"Error during processing: {str(e)}"
+            }
+
+        finally:
+            # Save metadata in all cases
+            if metadata_saver:
+                print(metadata_saver.metadata)
+                metadata_saver.save_metadata()
+            json_handler.save_json(content) 
+
+        # Return error response if an error occurred
+        if error_occurred:
+            if not status_code:
+                status_code = 500
+            return JSONResponse(content=content, status_code=status_code)
+        else:
+            return JSONResponse(content=content)
         
     else:
         content = json_handler.load_json()

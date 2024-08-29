@@ -24,6 +24,10 @@ class CopilotSettings(BaseSettings):
     # FAL.AI
     FAL_KEY: str = "adadads34234234kokokokok"
 
+    # GROQ
+    GROQ_MODEL: str = "gemma2-9b-it"
+    GROQ_MODEL_DEV: str = "llama-3.1-70b-versatile"
+
     # API
     API_CHAT_NAME: str = "Copilot Chat API"
     API_CHAT_DESCRIPTION: str = "API for Copilot Chat"

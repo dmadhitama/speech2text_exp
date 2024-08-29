@@ -21,6 +21,16 @@ def connect_and_insert(
         port, 
         row_data
     ):  
+    """
+    This function is used to connect to the database and insert the data.
+    Args:
+        database (str): The name of the database.
+        user (str): The username to connect to the database.
+        password (str): The password to connect to the database.
+        host (str): The host to connect to the database.
+        port (str): The port to connect to the database.
+        row_data (tuple): The data to insert into the database.
+    """
     # Create an engine and connect to the PostgreSQL database  
     engine = create_engine(f'postgresql+psycopg2://{user}:{password}@{host}:{port}/{database}')  
       
@@ -70,33 +80,56 @@ def connect_and_insert(
     except SQLAlchemyError as e:  
         session.rollback()  
         logger.error(f"Error occurred: {e}")
-        # raise HTTPException(
-        #     status_code=420, 
-        #     detail="Error occurred while inserting data."
-        # )
     finally:  
         session.close() 
 
 class MetadataSaver:  
+    """
+    This class is used to save the metadata to the database.
+    Args:
+        audio_duration (float): The duration of the audio.
+        metadata (Dict): The metadata from the STT.
+        transcript (str): The transcript from the STT.
+        soap_note (str): The SOAP note from the LLM.
+    """
     def __init__(
             self, 
             audio_duration: float, 
-            metadata: Dict, 
             transcript: str, 
-            soap_note: str
+            metadata: Dict = None, 
+            soap_note: str = None
         ):  
         self.audio_duration = audio_duration  
         self.metadata = metadata  
         self.transcript = transcript  
         self.soap_note = soap_note  
+
+    def update_metadata(self, new_metadata):
+        self.metadata = new_metadata
+
+    def update_soap_note(self, new_soap_note):
+        self.soap_note = new_soap_note
   
-    def save_metadata(self):  
+    def save_metadata(self): 
+        if self.metadata is not None:
+            token_usage = self.metadata.get('token_usage', self.metadata)
+            token_prompt = token_usage.get('prompt_tokens') or token_usage.get('input_tokens', 0)
+            token_completion = token_usage.get('completion_tokens') or token_usage.get('output_tokens', 0)
+            token_total = token_usage.get('total_tokens', token_prompt + token_completion)
+        else:
+            token_prompt = 0
+            token_completion = 0
+            token_total = 0
+        
+        logger.debug(f"Token prompt: {token_prompt}")
+        logger.debug(f"Token completion: {token_completion}")
+        logger.debug(f"Token total: {token_total}")
         row_data = (  
             str(convert_time_to_gmt7(datetime.datetime.now())),  
             self.audio_duration,  
-            self.metadata.get('token_usage', {}).get('prompt_tokens', 0),  
-            self.metadata.get('token_usage', {}).get('completion_tokens', 0),  
-            self.metadata.get('token_usage', {}).get('total_tokens', 0),  
+            token_prompt,  
+            token_completion,  
+            token_total,  
             self.transcript,  
             self.soap_note  
         )  
@@ -110,4 +143,7 @@ class MetadataSaver:
                 row_data=row_data  
             )  
         except Exception as e:  
-            raise HTTPException(status_code=500, detail="Error saving metadata information to database.")  
+            raise HTTPException(
+                status_code=500, 
+                detail="Error saving metadata information to database."
+            )  
