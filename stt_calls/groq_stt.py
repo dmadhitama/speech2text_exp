@@ -1,6 +1,10 @@
 import tempfile
-from loguru import logger
-from fastapi import HTTPException
+from utils.helper import init_logger
+from settings import CopilotSettings  
+
+config = CopilotSettings()
+# Logger initialization
+logger = init_logger(config.LOG_PATH)
 
 def recognize_using_groq(
         client,

@@ -64,11 +64,10 @@ app = FastAPI()
 app.add_middleware(  
     CORSMiddleware,  
     allow_origins=["*"],  # Allow all origins. Change this to specific origins in production.  
-    allow_credentials=True,  
+    allow_credentials=True,  # Allow credentials
     allow_methods=["*"],  # Allow all methods (GET, POST, etc.)  
     allow_headers=["*"],  # Allow all headers  
 )
-
 
 @app.on_event("startup")  
 async def startup_event():  
@@ -106,6 +105,14 @@ async def transcribe(
     stt_model: str = Form(...),
     diarization: bool = Form(False)
 ):  
+    """
+    Transcribe audio data using the specified STT model.
+    This endpoint supports the following STT models:
+    - azure: Azure Speech-to-Text
+    - vertex: Vertex AI Speech-to-Text
+    - vertex_cloud: Vertex AI Speech-to-Text via GCS URI
+    - groq: Groq Speech-to-Text
+    """
     audio_data = await audio.read()
       
     # Convert audio file to required format  

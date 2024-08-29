@@ -1,9 +1,13 @@
 from pydub import AudioSegment  
 from io import BytesIO  
 import requests
-from loguru import logger
 from fastapi import HTTPException
+from utils.helper import init_logger
+from settings import CopilotSettings  
 
+config = CopilotSettings()
+# Logger initialization
+logger = init_logger(config.LOG_PATH)
 
 def get_confirm_token(response):  
     for key, value in response.cookies.items():  
@@ -51,14 +55,16 @@ def read_audio_from_google_drive(file_url, audio_format='mp3'):
             audio_data = audio_segment.export(format=file_extension).read()
             return audio_data, file_extension
         except Exception as e:  
-            logger.error(f"Failed to decode audio: {e}")
+            err_msg = f"Failed to decode audio: {e}"
+            logger.error(err_msg)
             raise HTTPException(
                 status_code=400, 
-                detail="Failed to decode audio."
+                detail=err_msg
             )
     else:  
-        logger.error(f"Failed to download file. Status code: {response.status_code}")  
+        err_msg = f"Failed to download file. Status code: {response.status_code}"
+        logger.error(err_msg)  
         raise HTTPException(
             status_code=400, 
-            detail="Failed to download file."
+            detail=err_msg
         )

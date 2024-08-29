@@ -2,8 +2,16 @@ from sqlalchemy import create_engine, Column, Integer, String, Float, MetaData, 
 from sqlalchemy.orm import sessionmaker  
 from sqlalchemy.exc import SQLAlchemyError
 
+import datetime
 from fastapi import HTTPException
-from loguru import logger
+from typing import Dict
+
+from utils.helper import init_logger, convert_time_to_gmt7
+from settings import CopilotSettings  
+
+config = CopilotSettings()
+# Logger initialization
+logger = init_logger(config.LOG_PATH)
 
 def connect_and_insert(
         database, 
@@ -68,3 +76,38 @@ def connect_and_insert(
         # )
     finally:  
         session.close() 
+
+class MetadataSaver:  
+    def __init__(
+            self, 
+            audio_duration: float, 
+            metadata: Dict, 
+            transcript: str, 
+            soap_note: str
+        ):  
+        self.audio_duration = audio_duration  
+        self.metadata = metadata  
+        self.transcript = transcript  
+        self.soap_note = soap_note  
+  
+    def save_metadata(self):  
+        row_data = (  
+            str(convert_time_to_gmt7(datetime.datetime.now())),  
+            self.audio_duration,  
+            self.metadata.get('token_usage', {}).get('prompt_tokens', 0),  
+            self.metadata.get('token_usage', {}).get('completion_tokens', 0),  
+            self.metadata.get('token_usage', {}).get('total_tokens', 0),  
+            self.transcript,  
+            self.soap_note  
+        )  
+        try:  
+            connect_and_insert(  
+                database=config.POSTGRES_DB,  
+                user=config.POSTGRES_USER,  
+                password=config.POSTGRES_PASSWORD,  
+                host=config.POSTGRES_HOST,  
+                port=config.POSTGRES_PORT,  
+                row_data=row_data  
+            )  
+        except Exception as e:  
+            raise HTTPException(status_code=500, detail="Error saving metadata information to database.")  

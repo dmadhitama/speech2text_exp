@@ -1,7 +1,10 @@
 from fastapi import HTTPException
-import logging
+from utils.helper import init_logger
+from settings import CopilotSettings  
 
-logger = logging.getLogger(__name__)
+config = CopilotSettings()
+# Logger initialization
+logger = init_logger(config.LOG_PATH)
 
 def parse_soap_note(text):  
     sections = ["subjective", "objective", "assessment", "plan"]  
@@ -18,7 +21,6 @@ def parse_soap_note(text):
                 status_code=422, 
                 detail=f"Missing section: {section.capitalize()}. It might be caused by non-medical content or information in your audio recording."
             )
-            # return {"error": f"Missing section: {section.capitalize()}. It might be caused by non-medical content or information in your audio recording."}  
           
         start_index += len(start_marker)  
         end_index = text.find(end_marker) if end_marker else len(text)  

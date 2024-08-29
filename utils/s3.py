@@ -4,7 +4,12 @@ import os
 from urllib.parse import urlparse  
 from loguru import logger
 from fastapi import HTTPException
+from utils.helper import init_logger
 
+from settings import CopilotSettings  
+config = CopilotSettings()
+# Logger initialization
+logger = init_logger(config.LOG_PATH)
 
 # Function to read the audio file from S3 into a variable  
 def read_audio_file_from_s3(s3, bucket_name, object_key):  
@@ -15,12 +20,12 @@ def read_audio_file_from_s3(s3, bucket_name, object_key):
         audio_segment = AudioSegment.from_file(BytesIO(s3_object['Body'].read()))  
         logger.info(f"Read {object_key} from bucket {bucket_name} into memory")  
         return audio_segment  
-    except Exception as e:  
-        logger.error(f"Error reading file from S3:")  
-        logger.error(f"{str(e)}")
+    except Exception as e:
+        err_msg = "Error reading file from S3: " + str(e)
+        logger.error(err_msg)
         raise HTTPException(
             status_code=400, 
-            detail="Error reading file from S3."
+            detail=err_msg
         )
   
 # Function to detect the filename from the S3 object key  
