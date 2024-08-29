@@ -21,20 +21,10 @@ Here is the SOAP structure example for your reference:
 ## SOAP Note
 
 **Subjective:**
-subjective description
 
 **Objective:**
-objective description
 
 **Assessment:**
-assessment description
-- diagnosis 1
-- diagnosis 2
-- etc
 
 **Plan:** 
-plan description
-- treatment plan 1
-- treatment plan 2
-- etc
 """

@@ -89,6 +89,7 @@ async def soap_demo(
                 lang_id
             )  
         except Exception as e:  
+            logger.error(f"Error while transcribing audio: {str(e)}")
             raise HTTPException(
                 status_code=500, 
                 detail="Error while transcribing audio."
@@ -96,8 +97,8 @@ async def soap_demo(
         
         # SOAP Generating Process
         transcript2soap = Transcript2SOAP(transcript)
-        transcript2soap.generate_soap()
-        # transcript2soap.generate_soap_with_structured_output_parser() # TBD - NEXT FIX
+        # transcript2soap.generate_soap()
+        transcript2soap.generate_soap_with_structured_output_parser() # TBD - NEXT FIX
   
         metadata_saver = MetadataSaver(
             audio_processor.audio_duration, 
@@ -126,4 +127,4 @@ async def soap_demo(
   
 if __name__ == '__main__':  
     import uvicorn  
-    uvicorn.run(app, host='0.0.0.0', port=1433)  
+    uvicorn.run(app, host='0.0.0.0', port=8080)  

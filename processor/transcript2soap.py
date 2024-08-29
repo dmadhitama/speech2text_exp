@@ -71,6 +71,10 @@ class Transcript2SOAP:
                 name="plan", 
                 description="This section outlines the proposed management and treatment plan for the patient. It includes medications, therapies, lifestyle modifications, follow-up appointments, patient education, and any referrals to specialists.",
             ),
+            ResponseSchema(
+                name="metadata",
+                description="This section includes metadata about the LLM process, such as the prompt tokens, completion tokens, and total tokens."
+            ),
         ]
         output_parser = StructuredOutputParser.from_response_schemas(response_schemas)
 
