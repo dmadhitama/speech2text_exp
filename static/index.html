@@ -126,6 +126,9 @@
     </style>  
 </head>  
 <body>  
+    <!-- Remove this line -->
+    <!-- <audio id="audioPlayback" style="display: none;"></audio> -->
+
     <div class="main-container">  
         <div class="container">  
             <h1>🏥 Speech (or Text) to SOAP Note</h1>  
@@ -145,9 +148,10 @@
                 <div id="transcribeProcessingTime" class="processing-time"></div>  
             </div>  
             <div class="form-group">  
-                <label for="transcriptionResult">Transcription Result:</label>  
+                <label for="transcriptionResult">Transcription Result:</label> 
                 <textarea id="transcriptionResult" rows="5" placeholder="Transcription result will appear here..."></textarea>  
             </div>  
+            <!-- <div id="transcriptContainer"></div> -->
             <div class="form-group">  
                 <button id="generateSoap">  
                     Generate SOAP  
@@ -169,12 +173,12 @@
             <div class="audio-container">  
                 <div class="form-group">  
                     <button id="recordButton">Start Recording</button>  
-                    <audio id="audioPlayback" controls></audio>  
+                    <audio id="recordedAudioPlayback" controls></audio>  
                 </div>  
                 <div class="form-group">  
                     <label for="audioFile">Upload Audio File:</label>  
                     <input type="file" id="audioFile" accept="audio/*">  
-                    <audio id="fileAudioPlayback" controls></audio>  
+                    <audio id="uploadedAudioPlayback" controls></audio>  
                 </div>  
             </div>  
             <div class="settings-container">  

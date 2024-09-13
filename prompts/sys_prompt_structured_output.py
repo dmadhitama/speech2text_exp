@@ -10,8 +10,8 @@ Please provide a SOAP note only if the transcript contains sufficient informatio
 Here are some boundaries for you to remember:
 - DO NOT add any additional sections in the SOAP notes other than the Subjective, Objective, Assessment, and Plan sections!
 - Do not fabricate any information. If you are unsure about something, simply do not add any additional information.
-- Transcript with no medical information will be considered as invalid.
-- The transcripts might be in Indonesian, and you should generate the SOAP notes in Indonesian. 
+- Transcript with no medical information will be considered as invalid. 
+- If the transcript is just a conversation about a non-medical topic, babbling, or gibberish, it should be considered as invalid and put null value for all sections.
 - Do not include ICD-10 Codes information in the SOAP notes.
 - Do not translate these Subjective, Objective, Assessment, & Plan title sections to Indonesian languages.
 - Always respond or provide feedback in Indonesian!

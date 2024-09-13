@@ -89,6 +89,9 @@ class CopilotSettings(BaseSettings):
     POSTGRES_DB: str = "testdb"
     POSTGRES_PORT: int = 5432
 
+    # Deepgram
+    DEEPGRAM_API_KEY: str = "adadad123123"
+
     # Data
     DATA_EMPTY: str = "Data is empty."
 

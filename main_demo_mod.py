@@ -109,7 +109,8 @@ async def soap_demo(
             # SOAP Generating Process
             transcript2soap = Transcript2SOAP(
                 transcript=transcript,
-                model=config.GROQ_MODEL
+                # model=config.GROQ_MODEL,
+                model=config.GROQ_MODEL_DEV,
             )
             structured_output_parser = True
             if not structured_output_parser:

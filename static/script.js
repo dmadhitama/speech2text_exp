@@ -1,8 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {  
     const recordButton = document.getElementById('recordButton');  
-    const audioPlayback = document.getElementById('audioPlayback');  
+    const recordedAudioPlayback = document.getElementById('recordedAudioPlayback');  
+    const uploadedAudioPlayback = document.getElementById('uploadedAudioPlayback');  
     const audioFileInput = document.getElementById('audioFile');  
-    const fileAudioPlayback = document.getElementById('fileAudioPlayback');  
     const transcribeButton = document.getElementById('transcribe');  
     const generateSoapButton = document.getElementById('generateSoap');  
     const transcribeProcessingTime = document.getElementById('transcribeProcessingTime');  
@@ -52,6 +52,100 @@ document.addEventListener('DOMContentLoaded', () => {
         preview.style.display = 'none';  
         textarea.style.display = 'block';  
     };  
+
+    function renderTranscript(transcript, metadata) {
+        const transcriptionResult = document.getElementById('transcriptionResult');
+        const audioElement = uploadedAudioPlayback.src ? uploadedAudioPlayback : recordedAudioPlayback;
+        
+        if (!transcriptionResult) {
+            console.error('Transcription result textarea not found');
+            return;
+        }
+        
+        if (!audioElement || !audioElement.src) {
+            console.error('No audio source found');
+            return;
+        }
+        
+        // Set the full transcription in the textarea
+        transcriptionResult.value = transcript;
+
+        let highlightInterval;
+
+        const playAudioFromTime = (startTime) => {
+            if (audioElement.readyState >= 2) {
+                audioElement.currentTime = startTime;
+                audioElement.play().catch(e => console.error('Error playing audio:', e));
+                startHighlighting();
+            } else {
+                console.log('Audio not ready, waiting...');
+                audioElement.addEventListener('canplay', () => {
+                    audioElement.currentTime = startTime;
+                    audioElement.play().catch(e => console.error('Error playing audio:', e));
+                    startHighlighting();
+                }, { once: true });
+            }
+        };
+
+        const startHighlighting = () => {
+            if (highlightInterval) {
+                clearInterval(highlightInterval);
+            }
+            highlightInterval = setInterval(updateHighlight, 100); // Update every 100ms
+        };
+
+        const updateHighlight = () => {
+            const currentTime = audioElement.currentTime;
+            let currentChunk = metadata.find(chunk => currentTime >= chunk.start && currentTime < chunk.end);
+            
+            if (currentChunk) {
+                const start = transcript.indexOf(currentChunk.text);
+                const end = start + currentChunk.text.length;
+                transcriptionResult.setSelectionRange(start, end);
+                transcriptionResult.focus();
+            }
+        };
+
+        const stopHighlighting = () => {
+            if (highlightInterval) {
+                clearInterval(highlightInterval);
+            }
+        };
+
+        audioElement.addEventListener('pause', stopHighlighting);
+        audioElement.addEventListener('ended', () => {
+            stopHighlighting();
+            transcriptionResult.setSelectionRange(0, 0);
+        });
+
+        // Add click event listener to the textarea
+        transcriptionResult.addEventListener('click', (event) => {
+            const clickPosition = transcriptionResult.selectionStart;
+            let currentPosition = 0;
+            let selectedChunk = null;
+
+            for (const chunk of metadata) {
+                const chunkStart = transcript.indexOf(chunk.text, currentPosition);
+                if (chunkStart === -1) continue; // Skip if chunk text not found
+
+                const chunkEnd = chunkStart + chunk.text.length;
+                if (clickPosition >= chunkStart && clickPosition < chunkEnd) {
+                    selectedChunk = chunk;
+                    break;
+                }
+                currentPosition = chunkEnd;
+            }
+
+            if (selectedChunk) {
+                // Stop the current playback and highlighting
+                audioElement.pause();
+                stopHighlighting();
+
+                // Start playing from the new position
+                playAudioFromTime(selectedChunk.start);
+            }
+        });
+    }
   
     markdownSoap.addEventListener('change', () => {  
         if (markdownSoap.checked) {  
@@ -119,7 +213,12 @@ document.addEventListener('DOMContentLoaded', () => {
         mediaRecorder.addEventListener('stop', () => {  
             audioBlob = new Blob(audioChunks, { type: 'audio/wav' });  
             const audioUrl = URL.createObjectURL(audioBlob);  
-            audioPlayback.src = audioUrl;  
+            recordedAudioPlayback.src = audioUrl;  
+            uploadedAudioPlayback.src = ''; // Clear the uploaded audio source
+            recordedAudioPlayback.load(); // Ensure the audio is loaded
+            recordedAudioPlayback.addEventListener('canplay', () => {
+                console.log('Recorded audio is ready to play');
+            }, { once: true });
             isRecording = false;  
             recordButton.textContent = 'Start Recording';  
             recordButton.classList.remove('stop-button');  
@@ -181,7 +280,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const file = event.target.files[0];  
         audioBlob = file;  
         const audioUrl = URL.createObjectURL(file);  
-        fileAudioPlayback.src = audioUrl;  
+        uploadedAudioPlayback.src = audioUrl;  
+        recordedAudioPlayback.src = ''; // Clear the recorded audio source
+        uploadedAudioPlayback.load(); // Ensure the audio is loaded
+        uploadedAudioPlayback.addEventListener('canplay', () => {
+            console.log('Uploaded audio is ready to play');
+        }, { once: true });
     });  
   
     transcribeButton.addEventListener('click', () => {  
@@ -189,6 +293,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const patientName = document.getElementById('patientName').value;  
         const sttModel = document.getElementById('sttModel').value;   
         const diarization = diarizationCheckbox.checked;
+        
+        // Determine which audio source to use
+        const audioToTranscribe = uploadedAudioPlayback.src ? uploadedAudioPlayback : recordedAudioPlayback;
+        
+        if (!audioToTranscribe.src) {
+            console.error('No audio source found');
+            return;
+        }
+        
         // Create FormData to send audio file to the backend  
         const formData = new FormData();  
         formData.append('audio', audioBlob);  
@@ -209,8 +322,14 @@ document.addEventListener('DOMContentLoaded', () => {
             })  
             .then(data => {  
                 console.log('Transcription data:', data);  
-                const transcription = `Nama pasien: ${patientName}\n${data.transcription}`;  
-                transcriptionResult.value = transcription;  
+                const transcription = `Patient Name: ${patientName}\n${data.transcription}`;
+                
+                if (data.metadata) {
+                    renderTranscript(transcription, data.metadata);
+                } else {
+                    transcriptionResult.value = transcription;
+                    console.error('No metadata found in the response');
+                }
                 const endTime = performance.now();  
                 const processingTime = ((endTime - startTime) / 1000).toFixed(2);  
                 transcribeProcessingTime.textContent = `Transcription processing time: ${processingTime} seconds`;  

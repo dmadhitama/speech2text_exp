@@ -44,3 +44,11 @@ body {
     cursor: not-allowed;  
   }  
   
+  .highlight {
+    background-color: yellow;
+    cursor: pointer;
+}
+
+.highlight:hover {
+    background-color: orange;
+}

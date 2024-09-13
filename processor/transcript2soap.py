@@ -66,19 +66,19 @@ class Transcript2SOAP:
         response_schemas = [
             ResponseSchema(
                 name="subjective", 
-                description="This section captures the patient's personal experiences, feelings, and perceptions about their health condition. It includes the chief complaint (CC), history of present illness (HPI), past medical history (PMH), family history (FH), social history (SH), and review of systems (ROS)."
+                description="This section captures the patient's personal experiences, feelings, and perceptions about their health condition. It includes the chief complaint (CC), history of present illness (HPI), past medical history (PMH), family history (FH), social history (SH), and review of systems (ROS). Put null value if there is no medical information in the transcript."
             ),
             ResponseSchema(
                 name="objective", 
-                description="This section includes measurable, observable, and verifiable data collected by the healthcare provider. It encompasses physical examination findings, vital signs, laboratory results, imaging studies, and other diagnostic data.",
+                description="This section includes measurable, observable, and verifiable data collected by the healthcare provider. It encompasses physical examination findings, vital signs, laboratory results, imaging studies, and other diagnostic data. Put null value if there is no medical information in the transcript.",
             ),
             ResponseSchema(
                 name="assessment", 
-                description="This section provides the healthcare provider's medical diagnosis or differential diagnoses based on the subjective and objective information gathered. It includes the clinician's interpretation of the data and the rationale for the diagnosis.",
+                description="This section provides the healthcare provider's medical diagnosis or differential diagnoses based on the subjective and objective information gathered. It includes the clinician's interpretation of the data and the rationale for the diagnosis. Put null value if there is no medical information in the transcript.",
             ),
             ResponseSchema(
                 name="plan", 
-                description="This section outlines the proposed management and treatment plan for the patient. It includes medications, therapies, lifestyle modifications, follow-up appointments, patient education, and any referrals to specialists.",
+                description="This section outlines the proposed management and treatment plan for the patient. It includes medications, therapies, lifestyle modifications, follow-up appointments, patient education, and any referrals to specialists. Put null value if there is no medical information in the transcript.",
             ),
         ]
         output_parser = StructuredOutputParser.from_response_schemas(response_schemas)

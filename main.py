@@ -28,7 +28,8 @@ from utils.helper import (
     get_file_extension_from_mime,
     check_audio_duration
 )
-from llms.fal_diarization import recognize_diarization_fal
+from stt_calls.fal_diarization import recognize_diarization_fal
+from stt_calls.deepgram_diarization import recognize_diarization_deepgram
 
 from langchain_core.prompts import ChatPromptTemplate  
 from groq import Groq
@@ -124,7 +125,8 @@ async def transcribe(
     audio_dur = audio_segment.duration_seconds
       
     if diarization:
-        transcript = recognize_diarization_fal(audio_data)
+        # transcript = recognize_diarization_fal(audio_data)
+        response, transcript, metadata = recognize_diarization_deepgram(audio_data=audio_data)
 
     else:
         if stt_model == "azure":  
@@ -155,11 +157,21 @@ async def transcribe(
             )
             transcript = recognize_using_groq(client, audio_data)  
       
-    content = {
-        "id": id,
-        "transcription": transcript,
-        "audio_duration": audio_dur,
-    }
+    if diarization:
+        logger.info(f"Metadata: {metadata}")
+        content = {
+            "id": id,
+            "transcription": transcript,
+            "audio_duration": audio_dur,
+            "metadata": metadata
+        }
+    else:
+        logger.info(f"No metadata")
+        content = {
+            "id": id,
+            "transcription": transcript,
+            "audio_duration": audio_dur,
+        }
     return JSONResponse(content=content)  
   
 @app.post("/generate_soap")  
