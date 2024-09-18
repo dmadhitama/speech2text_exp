@@ -53,6 +53,9 @@ import base64
 import requests
 import magic
 
+# Remove the default handler
+logger.remove()
+
 log_level = "DEBUG"
 log_format = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS zz}</green> | <level>{level: <8}</level> | <yellow>Line {line: >4} ({file}):</yellow> <b>{message}</b>"
 logger.add(sys.stderr, level=log_level, format=log_format, colorize=True, backtrace=True, diagnose=True)

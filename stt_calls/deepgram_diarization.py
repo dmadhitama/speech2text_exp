@@ -78,7 +78,7 @@ def recognize_diarization_deepgram(
             transcript += f"- Speaker {speaker}\n"
 
         transcript += "\nTranscript:\n" + raw_transcript
-        logger.debug(response)
+        # logger.debug(response)
         logger.debug(f"List of Speakers: {speaker_id}")
         return response, transcript, metadata
 

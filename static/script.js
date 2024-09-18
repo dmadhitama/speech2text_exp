@@ -57,94 +57,102 @@ document.addEventListener('DOMContentLoaded', () => {
         const transcriptionResult = document.getElementById('transcriptionResult');
         const audioElement = uploadedAudioPlayback.src ? uploadedAudioPlayback : recordedAudioPlayback;
         
-        if (!transcriptionResult) {
-            console.error('Transcription result textarea not found');
+        if (!transcriptionResult || !audioElement || !audioElement.src) {
+            console.error('Transcription result, audio element, or audio source not found');
             return;
         }
         
-        if (!audioElement || !audioElement.src) {
-            console.error('No audio source found');
-            return;
-        }
+        console.log('Audio element source:', audioElement.src);
         
         // Set the full transcription in the textarea
         transcriptionResult.value = transcript;
-
+    
         let highlightInterval;
-
+        let isPlaying = false;
+    
         const playAudioFromTime = (startTime) => {
-            if (audioElement.readyState >= 2) {
-                audioElement.currentTime = startTime;
-                audioElement.play().catch(e => console.error('Error playing audio:', e));
+            console.log('Attempting to play audio from time:', startTime);
+            audioElement.currentTime = startTime;
+            audioElement.play().then(() => {
+                isPlaying = true;
                 startHighlighting();
-            } else {
-                console.log('Audio not ready, waiting...');
-                audioElement.addEventListener('canplay', () => {
-                    audioElement.currentTime = startTime;
-                    audioElement.play().catch(e => console.error('Error playing audio:', e));
-                    startHighlighting();
-                }, { once: true });
-            }
+            }).catch(e => console.error('Error playing audio:', e));
         };
-
+    
         const startHighlighting = () => {
-            if (highlightInterval) {
-                clearInterval(highlightInterval);
-            }
-            highlightInterval = setInterval(updateHighlight, 100); // Update every 100ms
+            if (highlightInterval) clearInterval(highlightInterval);
+            highlightInterval = setInterval(updateHighlight, 100);
         };
-
+    
         const updateHighlight = () => {
+            if (!isPlaying) return;
             const currentTime = audioElement.currentTime;
             let currentChunk = metadata.find(chunk => currentTime >= chunk.start && currentTime < chunk.end);
-            
-            if (currentChunk) {
-                const start = transcript.indexOf(currentChunk.text);
-                const end = start + currentChunk.text.length;
+            if (currentChunk) highlightText(currentChunk.text);
+        };
+    
+        const highlightText = (text) => {
+            const start = transcript.indexOf(text);
+            if (start !== -1) {
+                const end = start + text.length;
                 transcriptionResult.setSelectionRange(start, end);
                 transcriptionResult.focus();
+                // Scroll the highlighted text into view
+                const textBeforeHighlight = transcript.substring(0, start);
+                const lineHeight = parseInt(window.getComputedStyle(transcriptionResult).lineHeight);
+                const linesBefore = textBeforeHighlight.split('\n').length;
+                transcriptionResult.scrollTop = linesBefore * lineHeight - transcriptionResult.clientHeight / 2;
             }
         };
-
+    
         const stopHighlighting = () => {
-            if (highlightInterval) {
-                clearInterval(highlightInterval);
-            }
+            if (highlightInterval) clearInterval(highlightInterval);
+            isPlaying = false;
         };
-
+    
         audioElement.addEventListener('pause', stopHighlighting);
         audioElement.addEventListener('ended', () => {
             stopHighlighting();
             transcriptionResult.setSelectionRange(0, 0);
         });
-
+    
         // Add click event listener to the textarea
         transcriptionResult.addEventListener('click', (event) => {
             const clickPosition = transcriptionResult.selectionStart;
-            let currentPosition = 0;
-            let selectedChunk = null;
-
-            for (const chunk of metadata) {
-                const chunkStart = transcript.indexOf(chunk.text, currentPosition);
-                if (chunkStart === -1) continue; // Skip if chunk text not found
-
-                const chunkEnd = chunkStart + chunk.text.length;
-                if (clickPosition >= chunkStart && clickPosition < chunkEnd) {
-                    selectedChunk = chunk;
-                    break;
-                }
-                currentPosition = chunkEnd;
-            }
-
+            let selectedChunk = findNearestChunk(clickPosition, transcript, metadata);
+    
             if (selectedChunk) {
-                // Stop the current playback and highlighting
                 audioElement.pause();
                 stopHighlighting();
-
-                // Start playing from the new position
                 playAudioFromTime(selectedChunk.start);
             }
         });
+    
+        function findNearestChunk(position, transcript, metadata) {
+            let nearestChunk = null;
+            let minDistance = Infinity;
+    
+            for (const chunk of metadata) {
+                const chunkStart = transcript.indexOf(chunk.text);
+                if (chunkStart === -1) continue;
+    
+                const chunkEnd = chunkStart + chunk.text.length;
+                const distance = Math.min(Math.abs(position - chunkStart), Math.abs(position - chunkEnd));
+    
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearestChunk = chunk;
+                }
+            }
+    
+            return nearestChunk;
+        }
+    
+        // Ensure audio is loaded
+        audioElement.addEventListener('canplay', () => {
+            console.log('Audio is ready to play');
+        }, { once: true });
+        audioElement.load();
     }
   
     markdownSoap.addEventListener('change', () => {  
